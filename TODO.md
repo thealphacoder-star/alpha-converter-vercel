@@ -21,6 +21,10 @@
 - [x] Merge PDF accepts multiple PDFs, preserves their selected order, and combines their pages into one downloadable PDF.
 - [x] PDF to JPG exports every selected PDF page as JPG files inside one ZIP download.
 
+## Resume Maker
+- [x] The front page highlights Resume Maker and provides a dedicated builder with editable profile, summary, experience, education, and skills fields.
+- [x] Resume Maker provides five selectable templates — Classic, Editorial, Modern, Minimal, and Bold — with live preview updates and a browser-generated PDF download.
+
 ## Conversion flow
 - [x] The interface consistently communicates upload, processing, success, error, retry, and download states.
 

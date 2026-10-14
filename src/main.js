@@ -85,6 +85,12 @@ const tools = {
     emptyTitle: 'Drop your PDFs here', emptyText: 'or choose PDFs to export as JPGs', button: 'Choose PDFs',
     helper: 'Every page becomes a JPG inside one ZIP download',
   },
+  resume: {
+    label: 'Resume Maker', shortLabel: 'Resume', eyebrow: 'Career toolkit',
+    title: 'Build a resume that feels like you.',
+    description: 'Fill in the essentials, choose a visual direction, and download a polished resume PDF in minutes.',
+    icon: 'file', helper: 'Five curated templates · edit, preview, download',
+  },
 };
 
 const state = {
@@ -94,6 +100,8 @@ const state = {
   error: '',
   output: null,
   settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain' },
+  resume: { template: 'classic', name: 'Alex Morgan', role: 'Product Designer', email: 'alex@example.com', phone: '+1 555 012 3456', location: 'New York, NY', summary: 'Product designer focused on clear systems, thoughtful details, and useful digital experiences.', experience: 'Senior Product Designer — Northstar Studio\n2022 — Present\nLed end-to-end product design for a growing SaaS platform.\n\nProduct Designer — Fieldwork\n2019 — 2022\nShaped customer journeys and launched a new design system.', education: 'BFA, Communication Design — School of Visual Arts\n2015 — 2019', skills: 'Product strategy, UX research, Prototyping, Design systems, Figma' },
+  resumeOutput: null,
   notice: '',
 };
 
@@ -208,6 +216,7 @@ function homePage() {
             <div><p class="section-kicker">Conversion studio</p><h2 id="studio-title">Choose a format to begin.</h2></div>
             <p class="section-note">Local-first processing means your files are never sent away for conversion.</p>
           </div>
+          <button class="feature-banner" type="button" data-tool-link="resume"><span class="feature-banner-icon">${icon('spark', 20)}</span><span><strong>New · Resume Maker</strong><small>Create a polished resume from five thoughtful templates.</small></span><span class="feature-banner-action">Open builder ${icon('arrow', 16)}</span></button>
           <div class="studio-card">
             <div class="tool-tabs" role="tablist" aria-label="Conversion tools">
               ${Object.entries(tools).map(([key, tool]) => `<button class="tool-tab ${state.activeTool === key ? 'active' : ''}" role="tab" aria-selected="${state.activeTool === key}" data-tool="${key}"><span class="tab-icon">${icon(tool.icon, 19)}</span><span>${tool.label}</span></button>`).join('')}
@@ -241,9 +250,23 @@ function footer() {
 function toolPanel() {
   const tool = tools[state.activeTool];
   const hasFiles = state.files.length > 0;
+  if (state.activeTool === 'resume') return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">08 <i>/</i> 08</span></div>${resumePanel()}<div class="panel-footer"><span>${icon('shield', 15)} Your resume is generated locally in your browser</span><span>Download as PDF</span></div>`;
   return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> ${String(Object.keys(tools).length).padStart(2, '0')}</span></div>
     ${state.status === 'processing' ? processingState() : state.status === 'success' ? successState() : state.status === 'error' ? errorState() : uploadState(hasFiles, tool)}
     <div class="panel-footer"><span>${icon('shield', 15)} Files are processed locally in your browser</span><span>Max file size: 25 MB</span></div>`;
+}
+
+function resumePanel() {
+  const r = state.resume;
+  const fields = [['name', 'Full name', 'text'], ['role', 'Target role', 'text'], ['email', 'Email', 'email'], ['phone', 'Phone', 'text'], ['location', 'Location', 'text']];
+  const templates = [['classic', 'Classic', 'Structured and dependable'], ['editorial', 'Editorial', 'Warm and expressive'], ['modern', 'Modern', 'Crisp and energetic'], ['minimal', 'Minimal', 'Quiet and focused'], ['bold', 'Bold', 'Confident and distinctive']];
+  return `<div class="resume-builder"><div class="resume-form"><div class="resume-field-grid">${fields.map(([key, label, type]) => `<label>${label}<input class="resume-field" data-resume-field="${key}" type="${type}" value="${escapeHtml(r[key])}" /></label>`).join('')}</div><label class="resume-wide">Professional summary<textarea class="resume-field" data-resume-field="summary" rows="3">${escapeHtml(r.summary)}</textarea></label><label class="resume-wide">Experience<textarea class="resume-field" data-resume-field="experience" rows="6">${escapeHtml(r.experience)}</textarea></label><label class="resume-wide">Education<textarea class="resume-field" data-resume-field="education" rows="4">${escapeHtml(r.education)}</textarea></label><label class="resume-wide">Skills<textarea class="resume-field" data-resume-field="skills" rows="2">${escapeHtml(r.skills)}</textarea></label><div class="template-picker"><span class="template-label">Choose a template</span><div class="template-options" role="tablist" aria-label="Resume templates">${templates.map(([key, label, note]) => `<button type="button" class="template-choice ${r.template === key ? 'active' : ''}" data-template="${key}" role="tab" aria-selected="${r.template === key}"><span class="template-swatch ${key}"></span><strong>${label}</strong><small>${note}</small></button>`).join('')}</div></div><div class="resume-actions"><button class="primary-button" id="resume-download" type="button">${icon('download', 17)} Download resume PDF</button>${state.resumeOutput ? `<a class="resume-ready" href="${state.resumeOutput.url}" download="${state.resumeOutput.name}">${icon('check', 15)} Resume ready — download again</a>` : ''}</div></div><div class="resume-preview-wrap"><span class="preview-label">Live preview</span><div class="resume-preview resume-${r.template}" id="resume-preview">${resumePreview()}</div></div></div>`;
+}
+
+function resumePreview() {
+  const r = state.resume;
+  const lines = (value) => escapeHtml(value).split(/\n+/).map((line) => line.trim()).filter(Boolean).map((line) => `<div>${line}</div>`).join('');
+  return `<header><h4>${escapeHtml(r.name || 'Your Name')}</h4><p>${escapeHtml(r.role || 'Your target role')}</p><small>${escapeHtml([r.email, r.phone, r.location].filter(Boolean).join(' · '))}</small></header><section><h5>Profile</h5><p>${escapeHtml(r.summary || 'Add a short professional summary.')}</p></section><section><h5>Experience</h5><div class="resume-lines">${lines(r.experience)}</div></section><section><h5>Education</h5><div class="resume-lines">${lines(r.education)}</div></section><section><h5>Skills</h5><p>${escapeHtml(r.skills || 'Add your key skills.')}</p></section>`;
 }
 
 function uploadState(hasFiles, tool) {
@@ -315,6 +338,16 @@ function bindHomeEvents() {
     render();
     document.querySelector('#tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
+  document.querySelectorAll('.resume-field').forEach((field) => field.addEventListener('input', () => {
+    state.resume[field.dataset.resumeField] = field.value;
+    const preview = document.querySelector('#resume-preview');
+    if (preview) preview.innerHTML = resumePreview();
+  }));
+  document.querySelectorAll('.template-choice').forEach((choice) => choice.addEventListener('click', () => {
+    state.resume.template = choice.dataset.template;
+    render();
+  }));
+  document.querySelector('#resume-download')?.addEventListener('click', downloadResume);
   document.querySelectorAll('.tool-tab').forEach((tab) => tab.addEventListener('click', () => {
     state.activeTool = tab.dataset.tool;
     state.files = [];
@@ -350,6 +383,17 @@ function bindHomeEvents() {
   document.querySelector('#convert-button')?.addEventListener('click', convert);
   document.querySelector('#start-again')?.addEventListener('click', () => { state.files = []; state.output = null; setStatus('idle'); render(); });
   document.querySelector('#try-again')?.addEventListener('click', () => { state.output = null; setStatus('ready'); render(); });
+}
+
+function downloadResume() {
+  const r = state.resume;
+  const colors = { classic: ['#245C4F', '#F3F7EF'], editorial: ['#B7654F', '#FBF0E8'], modern: ['#234D73', '#EAF2F8'], minimal: ['#3D4843', '#F4F4F1'], bold: ['#7B4D2E', '#F6EBDD'] };
+  const [accent, tint] = colors[r.template] || colors.classic;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' }); const margin = 42; const width = doc.internal.pageSize.getWidth(); let y = 52;
+  doc.setFillColor(tint); doc.rect(0, 0, width, 128, 'F'); doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(27); doc.text(r.name || 'Your Name', margin, y); y += 25; doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text(r.role || 'Your target role', margin, y); y += 21; doc.setTextColor('#68756d'); doc.setFontSize(9); doc.text([r.email, r.phone, r.location].filter(Boolean).join('  ·  '), margin, y); y = 165;
+  const section = (title, text, size = 10) => { doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(title.toUpperCase(), margin, y); y += 15; doc.setTextColor('#3b4841'); doc.setFont('helvetica', 'normal'); doc.setFontSize(size); const lines = doc.splitTextToSize(text || '', width - margin * 2); doc.text(lines, margin, y); y += lines.length * (size + 4) + 17; };
+  section('Profile', r.summary); section('Experience', r.experience); section('Education', r.education); section('Skills', r.skills);
+  const url = URL.createObjectURL(doc.output('blob')); state.resumeOutput = { url, name: `${(r.name || 'resume').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-resume.pdf` }; render();
 }
 
 function validateFile(file) {
