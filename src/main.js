@@ -161,9 +161,9 @@ function render() {
 function header() {
   return `
     <header class="site-header">
-      <a class="brand" href="/" data-route="/" aria-label="FileForge home">
+      <a class="brand" href="/" data-route="/" aria-label="AlphaConverter home">
         <span class="brand-mark">${icon('file', 23)}</span>
-        <span class="brand-name">File<span>Forge</span></span>
+        <span class="brand-name">Alpha<span>Converter</span></span>
       </a>
       <nav class="desktop-nav" aria-label="Main navigation">
         <div class="nav-dropdown"><button class="nav-dropdown-trigger" type="button" aria-haspopup="true">Tools ${icon('chevron', 14)}</button><div class="nav-dropdown-panel" role="menu">${Object.entries(tools).map(([key, tool]) => `<button type="button" data-tool-link="${key}" role="menuitem"><span>${icon(tool.icon, 15)}</span>${tool.label}</button>`).join('')}</div></div>
@@ -226,7 +226,7 @@ function homePage() {
         </section>
 
         <section class="trust-section" id="trust" aria-labelledby="trust-title">
-          <div class="trust-copy"><p class="section-kicker">Quietly private</p><h2 id="trust-title">Your documents are yours.<br /><em>Full stop.</em></h2><p>FileForge runs conversions in your browser. Nothing is uploaded, stored, or used to train anything. When you close the tab, the working files go with it.</p><a class="text-link" href="/privacy" data-route="/privacy">Read our privacy promise ${icon('arrow', 15)}</a></div>
+          <div class="trust-copy"><p class="section-kicker">Quietly private</p><h2 id="trust-title">Your documents are yours.<br /><em>Full stop.</em></h2><p>AlphaConverter runs conversions in your browser. Nothing is uploaded, stored, or used to train anything. When you close the tab, the working files go with it.</p><a class="text-link" href="/privacy" data-route="/privacy">Read our privacy promise ${icon('arrow', 15)}</a></div>
           <div class="trust-seal"><div class="seal-ring">${icon('shield', 38)}</div><strong>Local-first</strong><span>conversion</span><small>Built for thoughtful file handling</small></div>
         </section>
       </main>
@@ -235,7 +235,7 @@ function homePage() {
 }
 
 function footer() {
-  return `<footer class="site-footer"><div class="footer-main"><a class="brand" href="/" data-route="/"><span class="brand-mark">${icon('file', 20)}</span><span class="brand-name">File<span>Forge</span></span></a><p>Useful file work, without the noise.</p><div class="footer-links"><a href="/privacy" data-route="/privacy">Privacy</a><a href="/terms" data-route="/terms">Terms</a><a href="#tools">Tools</a></div></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} FileForge</span><span>Made for the files between moments.</span></div></footer>`;
+  return `<footer class="site-footer"><div class="footer-main"><a class="brand" href="/" data-route="/"><span class="brand-mark">${icon('file', 20)}</span><span class="brand-name">Alpha<span>Converter</span></span></a><p>Useful file work, without the noise.</p><div class="footer-links"><a href="/privacy" data-route="/privacy">Privacy</a><a href="/terms" data-route="/terms">Terms</a><a href="#tools">Tools</a></div></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} AlphaConverter</span><span>Made for the files between moments.</span></div></footer>`;
 }
 
 function toolPanel() {
@@ -276,7 +276,7 @@ function processingState() {
 }
 
 function successState() {
-  return `<div class="state-card success-card"><div class="state-icon">${icon('check', 27)}</div><div><strong>Your file is ready.</strong><p>${escapeHtml(state.output?.description || 'The conversion finished successfully.')}</p></div><a class="primary-button download-button" href="${state.output?.url || '#'}" download="${escapeHtml(state.output?.name || 'fileforge-output')}">${icon('download', 17)} Download file</a></div><button class="again-button" type="button" id="start-again">${icon('refresh', 15)} Convert another file</button>`;
+  return `<div class="state-card success-card"><div class="state-icon">${icon('check', 27)}</div><div><strong>Your file is ready.</strong><p>${escapeHtml(state.output?.description || 'The conversion finished successfully.')}</p></div><a class="primary-button download-button" href="${state.output?.url || '#'}" download="${escapeHtml(state.output?.name || 'alphaconverter-output')}">${icon('download', 17)} Download file</a></div><button class="again-button" type="button" id="start-again">${icon('refresh', 15)} Convert another file</button>`;
 }
 
 function errorState() {
@@ -285,7 +285,7 @@ function errorState() {
 
 function legalPage(kind) {
   const privacy = kind === 'privacy';
-  return `<div class="site-shell legal-shell">${header()}<main class="legal-main"><a class="back-link" href="/" data-route="/">${icon('arrow', 15)} Back to FileForge</a><p class="section-kicker">${privacy ? 'Privacy' : 'Terms of use'}</p><h1>${privacy ? 'A clearer way to handle files.' : 'Simple terms for a simple tool.'}</h1><p class="legal-intro">${privacy ? 'FileForge is designed around a straightforward promise: your files stay with you.' : 'FileForge is a browser-based utility for everyday document conversion.'}</p><div class="legal-content">${privacy ? `<h2>Local-first by design</h2><p>Conversions run in your browser. FileForge does not upload your selected files to a FileForge server, create an account record, or use your documents for training.</p><h2>What your browser keeps</h2><p>Your browser temporarily reads the files you select so it can convert them. Generated downloads are created in your browser and are not stored by FileForge. Clear your browser tab or close the page to release working memory.</p><h2>Third-party libraries</h2><p>The converter uses open-source document libraries loaded with the site. They process the file data inside the current browser session.</p><h2>Questions</h2><p>If this product evolves to use server-side processing, this page will be updated before that change takes effect.</p>` : `<h2>Use the tool responsibly</h2><p>You are responsible for the files you choose and for reviewing converted outputs before sharing or relying on them.</p><h2>Conversion quality</h2><p>Different source files can produce different results. PDF table extraction works best with selectable text and clear tabular structure. FileForge does not guarantee that every conversion will preserve every visual or structural detail.</p><h2>Availability</h2><p>We aim to keep the tool useful and available, but browser capabilities, file complexity, and future changes can affect results.</p><h2>Updates</h2><p>We may refine the interface and conversion libraries over time. The current terms are always available on this page.</p>`}</div></main>${footer()}</div>`;
+  return `<div class="site-shell legal-shell">${header()}<main class="legal-main"><a class="back-link" href="/" data-route="/">${icon('arrow', 15)} Back to AlphaConverter</a><p class="section-kicker">${privacy ? 'Privacy' : 'Terms of use'}</p><h1>${privacy ? 'A clearer way to handle files.' : 'Simple terms for a simple tool.'}</h1><p class="legal-intro">${privacy ? 'AlphaConverter is designed around a straightforward promise: your files stay with you.' : 'AlphaConverter is a browser-based utility for everyday document conversion.'}</p><div class="legal-content">${privacy ? `<h2>Local-first by design</h2><p>Conversions run in your browser. AlphaConverter does not upload your selected files to an AlphaConverter server, create an account record, or use your documents for training.</p><h2>What your browser keeps</h2><p>Your browser temporarily reads the files you select so it can convert them. Generated downloads are created in your browser and are not stored by AlphaConverter. Clear your browser tab or close the page to release working memory.</p><h2>Third-party libraries</h2><p>The converter uses open-source document libraries loaded with the site. They process the file data inside the current browser session.</p><h2>Questions</h2><p>If this product evolves to use server-side processing, this page will be updated before that change takes effect.</p>` : `<h2>Use the tool responsibly</h2><p>You are responsible for the files you choose and for reviewing converted outputs before sharing or relying on them.</p><h2>Conversion quality</h2><p>Different source files can produce different results. PDF table extraction works best with selectable text and clear tabular structure. AlphaConverter does not guarantee that every conversion will preserve every visual or structural detail.</p><h2>Availability</h2><p>We aim to keep the tool useful and available, but browser capabilities, file complexity, and future changes can affect results.</p><h2>Updates</h2><p>We may refine the interface and conversion libraries over time. The current terms are always available on this page.</p>`}</div></main>${footer()}</div>`;
 }
 
 function bindShellEvents() {
@@ -397,7 +397,7 @@ async function imagesToPdf() {
     const x = (pageWidth - width) / 2; const y = (pageHeight - height) / 2;
     doc.addImage(data, 'JPEG', x, y, width, height, undefined, 'FAST');
   }
-  return { blob: doc.output('blob'), name: 'fileforge-images.pdf', description: `${state.files.length} image${state.files.length > 1 ? 's' : ''} combined into one PDF.` };
+  return { blob: doc.output('blob'), name: 'alphaconverter-images.pdf', description: `${state.files.length} image${state.files.length > 1 ? 's' : ''} combined into one PDF.` };
 }
 
 async function excelToPdf() {
@@ -478,7 +478,7 @@ async function pdfsToPdf() {
     else doc.addPage([width, height], orientation);
     doc.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, width, height, undefined, 'FAST');
   });
-  const name = isCompress ? 'fileforge-compressed.pdf' : isCrop ? 'fileforge-cropped.pdf' : 'fileforge-merged.pdf';
+  const name = isCompress ? 'alphaconverter-compressed.pdf' : isCrop ? 'alphaconverter-cropped.pdf' : 'alphaconverter-merged.pdf';
   const description = isCompress ? `${pages.length} page${pages.length > 1 ? 's' : ''} rebuilt at a lighter image weight.` : isCrop ? `${pages.length} page${pages.length > 1 ? 's' : ''} cropped with a ${state.settings.cropInset || 0}% edge trim.` : `${pages.length} page${pages.length > 1 ? 's' : ''} combined from ${state.files.length} PDF${state.files.length > 1 ? 's' : ''}.`;
   return { blob: doc.output('blob'), name, description };
 }
@@ -489,7 +489,7 @@ async function pdfToJpg() {
     const pages = await renderPdfPages(file, 1.5); const base = file.name.replace(/\.[^/.]+$/, '') || 'document';
     pages.forEach((page, index) => { const data = page.canvas.toDataURL('image/jpeg', 0.9).split(',')[1]; zip.file(`${base}-${String(index + 1).padStart(2, '0')}.jpg`, data, { base64: true }); pageCount += 1; });
   }
-  return { blob: await zip.generateAsync({ type: 'blob' }), name: 'fileforge-jpg-pages.zip', description: `${pageCount} PDF page${pageCount > 1 ? 's' : ''} exported as JPG images inside a ZIP.` };
+  return { blob: await zip.generateAsync({ type: 'blob' }), name: 'alphaconverter-jpg-pages.zip', description: `${pageCount} PDF page${pageCount > 1 ? 's' : ''} exported as JPG images inside a ZIP.` };
 }
 
 async function convert() {
