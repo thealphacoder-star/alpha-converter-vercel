@@ -1,0 +1,407 @@
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import './styles.css';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const MAX_IMAGE_FILES = 12;
+const tools = {
+  image: {
+    label: 'JPG to PDF',
+    shortLabel: 'Images',
+    eyebrow: 'Image conversion',
+    title: 'Turn a stack of images into one polished PDF.',
+    description: 'Drop JPEGs in, arrange the pages, and export a clean PDF without sending your files anywhere.',
+    accept: '.jpg,.jpeg,image/jpeg',
+    formats: 'JPG or JPEG · up to 25 MB each',
+    icon: 'image',
+    emptyTitle: 'Drop your images here',
+    emptyText: 'or choose JPG / JPEG files from your device',
+    button: 'Choose images',
+    helper: 'Up to 12 images · reorder before converting',
+  },
+  excel: {
+    label: 'Excel to PDF',
+    shortLabel: 'Spreadsheets',
+    eyebrow: 'Spreadsheet conversion',
+    title: 'Make spreadsheets easy to share and print.',
+    description: 'Convert the first worksheet into a tidy PDF with simple page and orientation controls.',
+    accept: '.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv',
+    formats: 'XLSX, XLS or CSV · up to 25 MB',
+    icon: 'sheet',
+    emptyTitle: 'Drop your spreadsheet here',
+    emptyText: 'or choose an Excel or CSV file from your device',
+    button: 'Choose spreadsheet',
+    helper: 'First worksheet · values are kept in browser memory',
+  },
+  pdf: {
+    label: 'PDF to Excel',
+    shortLabel: 'PDF tables',
+    eyebrow: 'Table extraction',
+    title: 'Bring PDF tables back into a spreadsheet.',
+    description: 'Extract selectable text from a PDF into a downloadable XLSX file, ready for cleanup or analysis.',
+    accept: '.pdf,application/pdf',
+    formats: 'PDF · up to 25 MB · selectable text works best',
+    icon: 'pdf',
+    emptyTitle: 'Drop your PDF here',
+    emptyText: 'or choose a PDF with selectable table text',
+    button: 'Choose PDF',
+    helper: 'Browser-based extraction · scanned PDFs may need OCR',
+  },
+};
+
+const state = {
+  activeTool: 'image',
+  files: [],
+  status: 'idle',
+  error: '',
+  output: null,
+  settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain' },
+  notice: '',
+};
+
+const app = document.querySelector('#app');
+
+function icon(name, size = 20) {
+  const common = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+  const paths = {
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    check: '<path d="m5 12 4 4L19 6"/>',
+    chevron: '<path d="m7 10 5 5 5-5"/>',
+    download: '<path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/>',
+    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-4.5-4.5L7 20"/>',
+    lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 15h2a2 2 0 1 0 0-4H8v6m6 0v-6h1.5a2.5 2.5 0 0 1 0 5H14M8 18h8"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    refresh: '<path d="M20 11a8.1 8.1 0 0 0-14.7-3L3 11m0-5v5h5M4 13a8.1 8.1 0 0 0 14.7 3L21 13m0 5v-5h-5"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+    sheet: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h3M14 15h2M8 18h3M14 18h2"/>',
+    spark: '<path d="m12 3 1.2 4.8L18 9l-4.8 1.2L12 15l-1.2-4.8L6 9l4.8-1.2zM19 15l.6 2.4L22 18l-2.4.6L19 21l-.6-2.4L16 18l2.4-.6z"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/>',
+    upload: '<path d="M12 16V4m0 0L7 9m5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  };
+  return `<svg ${common}>${paths[name] || paths.file}</svg>`;
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 KB';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[char]));
+}
+
+function humanFileName(name) {
+  return name.length > 34 ? `${name.slice(0, 27)}…${name.slice(-7)}` : name;
+}
+
+function setStatus(status, error = '') {
+  state.status = status;
+  state.error = error;
+}
+
+function render() {
+  const route = window.location.pathname;
+  if (route === '/privacy') {
+    app.innerHTML = legalPage('privacy');
+    bindShellEvents();
+    return;
+  }
+  if (route === '/terms') {
+    app.innerHTML = legalPage('terms');
+    bindShellEvents();
+    return;
+  }
+  app.innerHTML = homePage();
+  bindHomeEvents();
+}
+
+function header() {
+  return `
+    <header class="site-header">
+      <a class="brand" href="/" data-route="/" aria-label="FileForge home">
+        <span class="brand-mark">${icon('file', 23)}</span>
+        <span class="brand-name">File<span>Forge</span></span>
+      </a>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#tools">Tools</a>
+        <a href="#workflow">How it works</a>
+        <a href="#trust">Privacy first</a>
+      </nav>
+      <div class="header-actions">
+        <span class="secure-pill">${icon('lock', 14)} Files stay on device</span>
+        <a class="header-cta" href="#tools">Open converter ${icon('arrow', 16)}</a>
+      </div>
+      <button class="mobile-menu" type="button" aria-label="Open navigation" aria-expanded="false">${icon('menu', 21)}</button>
+    </header>`;
+}
+
+function homePage() {
+  return `
+    <div class="site-shell">
+      ${header()}
+      <main>
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="eyebrow-dot"></span> Private conversion, beautifully simple</div>
+            <h1 id="hero-title">Your files.<br /><em>Better formats.</em></h1>
+            <p class="hero-lede">Convert the documents that keep work moving — without uploading them to a server or learning another complicated tool.</p>
+            <div class="hero-proof">
+              <span>${icon('check', 15)} No account required</span>
+              <span>${icon('check', 15)} Works in your browser</span>
+              <span>${icon('check', 15)} Free to try</span>
+            </div>
+          </div>
+          <div class="hero-art" aria-label="Illustration of neatly stacked document formats">
+            <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+            <div class="paper paper-back"><span class="paper-line long"></span><span class="paper-line"></span><span class="paper-line short"></span></div>
+            <div class="paper paper-mid"><span class="paper-tab">XLSX</span><span class="paper-grid"><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+            <div class="paper paper-front"><span class="paper-fold"></span><span class="paper-type">PDF</span><span class="paper-line long"></span><span class="paper-line"></span></div>
+            <div class="art-caption"><span class="caption-dot"></span> One calm place for file work</div>
+          </div>
+        </section>
+
+        <section class="studio-section" id="tools" aria-labelledby="studio-title">
+          <div class="section-intro">
+            <div><p class="section-kicker">Conversion studio</p><h2 id="studio-title">Choose a format to begin.</h2></div>
+            <p class="section-note">Local-first processing means your files are never sent away for conversion.</p>
+          </div>
+          <div class="studio-card">
+            <div class="tool-tabs" role="tablist" aria-label="Conversion tools">
+              ${Object.entries(tools).map(([key, tool]) => `<button class="tool-tab ${state.activeTool === key ? 'active' : ''}" role="tab" aria-selected="${state.activeTool === key}" data-tool="${key}"><span class="tab-icon">${icon(tool.icon, 19)}</span><span>${tool.label}</span></button>`).join('')}
+            </div>
+            <div class="tool-panel" id="tool-panel">${toolPanel()}</div>
+          </div>
+        </section>
+
+        <section class="workflow-section" id="workflow" aria-labelledby="workflow-title">
+          <div class="section-intro compact"><div><p class="section-kicker">A lighter workflow</p><h2 id="workflow-title">From file to finished in three beats.</h2></div></div>
+          <div class="workflow-grid">
+            <div class="workflow-step"><span class="step-number">01</span><div class="step-icon">${icon('upload', 22)}</div><h3>Bring your file</h3><p>Drop it in or choose it from your device. We show what is supported before you begin.</p></div>
+            <div class="workflow-step"><span class="step-number">02</span><div class="step-icon">${icon('spark', 22)}</div><h3>Make it yours</h3><p>Reorder images or choose page settings. Every control stays close to the work.</p></div>
+            <div class="workflow-step"><span class="step-number">03</span><div class="step-icon">${icon('download', 22)}</div><h3>Take it with you</h3><p>Download a fresh file, then start another conversion whenever you need it.</p></div>
+          </div>
+        </section>
+
+        <section class="trust-section" id="trust" aria-labelledby="trust-title">
+          <div class="trust-copy"><p class="section-kicker">Quietly private</p><h2 id="trust-title">Your documents are yours.<br /><em>Full stop.</em></h2><p>FileForge runs conversions in your browser. Nothing is uploaded, stored, or used to train anything. When you close the tab, the working files go with it.</p><a class="text-link" href="/privacy" data-route="/privacy">Read our privacy promise ${icon('arrow', 15)}</a></div>
+          <div class="trust-seal"><div class="seal-ring">${icon('shield', 38)}</div><strong>Local-first</strong><span>conversion</span><small>Built for thoughtful file handling</small></div>
+        </section>
+      </main>
+      ${footer()}
+    </div>`;
+}
+
+function footer() {
+  return `<footer class="site-footer"><div class="footer-main"><a class="brand" href="/" data-route="/"><span class="brand-mark">${icon('file', 20)}</span><span class="brand-name">File<span>Forge</span></span></a><p>Useful file work, without the noise.</p><div class="footer-links"><a href="/privacy" data-route="/privacy">Privacy</a><a href="/terms" data-route="/terms">Terms</a><a href="#tools">Tools</a></div></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} FileForge</span><span>Made for the files between moments.</span></div></footer>`;
+}
+
+function toolPanel() {
+  const tool = tools[state.activeTool];
+  const hasFiles = state.files.length > 0;
+  return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> 03</span></div>
+    ${state.status === 'processing' ? processingState() : state.status === 'success' ? successState() : state.status === 'error' ? errorState() : uploadState(hasFiles, tool)}
+    <div class="panel-footer"><span>${icon('shield', 15)} Files are processed locally in your browser</span><span>Max file size: 25 MB</span></div>`;
+}
+
+function uploadState(hasFiles, tool) {
+  return `<div class="upload-layout"><div class="drop-zone ${hasFiles ? 'has-files' : ''}" id="drop-zone" tabindex="0" role="button" aria-label="${tool.button}. ${tool.formats}"><input id="file-input" type="file" accept="${tool.accept}" ${state.activeTool === 'image' ? 'multiple' : ''} hidden /><div class="drop-symbol">${icon(hasFiles ? 'check' : 'upload', 26)}</div><strong>${hasFiles ? `${state.files.length} file${state.files.length > 1 ? 's' : ''} ready` : tool.emptyTitle}</strong><span>${hasFiles ? 'Add more or continue below' : tool.emptyText}</span><button class="secondary-button" type="button" id="choose-files">${icon('plus', 16)} ${tool.button}</button><small>${tool.formats}</small></div>${hasFiles ? fileQueue() : helperCard(tool)}</div>${hasFiles ? settingsCard() + actionBar() : ''}`;
+}
+
+function helperCard(tool) {
+  return `<div class="helper-card"><div class="helper-icon">${icon(tool.icon, 19)}</div><div><strong>Good to know</strong><p>${tool.helper}</p></div><span class="helper-arrow">${icon('arrow', 17)}</span></div>`;
+}
+
+function fileQueue() {
+  return `<div class="file-queue" aria-live="polite"><div class="queue-head"><strong>Your file${state.files.length > 1 ? 's' : ''}</strong><button class="quiet-button" id="clear-files" type="button">Clear all</button></div><div class="queue-list">${state.files.map((file, index) => `<div class="file-row" data-index="${index}"><span class="file-type ${state.activeTool}">${state.activeTool === 'image' ? icon('image', 16) : state.activeTool === 'excel' ? icon('sheet', 16) : icon('pdf', 16)}</span><span class="file-name" title="${escapeHtml(file.name)}">${escapeHtml(humanFileName(file.name))}</span><span class="file-size">${formatBytes(file.size)}</span>${state.activeTool === 'image' ? `<button class="icon-button move-file" data-direction="up" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} up" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button move-file" data-direction="down" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} down" ${index === state.files.length - 1 ? 'disabled' : ''}>↓</button>` : ''}<button class="icon-button remove-file" data-index="${index}" aria-label="Remove ${escapeHtml(file.name)}">×</button></div>`).join('')}</div></div>`;
+}
+
+function settingsCard() {
+  if (state.activeTool === 'pdf') return '';
+  return `<div class="settings-row"><label>Page size<select id="page-size"><option value="a4" ${state.settings.pageSize === 'a4' ? 'selected' : ''}>A4</option><option value="letter" ${state.settings.pageSize === 'letter' ? 'selected' : ''}>US Letter</option><option value="legal" ${state.settings.pageSize === 'legal' ? 'selected' : ''}>Legal</option></select></label><label>Orientation<select id="orientation"><option value="portrait" ${state.settings.orientation === 'portrait' ? 'selected' : ''}>Portrait</option><option value="landscape" ${state.settings.orientation === 'landscape' ? 'selected' : ''}>Landscape</option></select></label>${state.activeTool === 'image' ? `<label>Image fit<select id="image-fit"><option value="contain" ${state.settings.fit === 'contain' ? 'selected' : ''}>Fit to page</option><option value="cover" ${state.settings.fit === 'cover' ? 'selected' : ''}>Fill page</option></select></label>` : ''}</div>`;
+}
+
+function actionBar() {
+  const label = state.activeTool === 'image' ? 'Create PDF' : state.activeTool === 'excel' ? 'Convert to PDF' : 'Extract to Excel';
+  return `<div class="action-bar"><span>${icon('check', 16)} Ready when you are</span><button class="primary-button" id="convert-button" type="button">${label} ${icon('arrow', 17)}</button></div>`;
+}
+
+function processingState() {
+  return `<div class="state-card processing-card"><div class="processing-visual"><span></span><span></span><span></span></div><div><strong>Working on your file</strong><p>Everything is happening locally. Keep this tab open for a moment.</p></div><span class="processing-label">PROCESSING</span></div>`;
+}
+
+function successState() {
+  return `<div class="state-card success-card"><div class="state-icon">${icon('check', 27)}</div><div><strong>Your file is ready.</strong><p>${escapeHtml(state.output?.description || 'The conversion finished successfully.')}</p></div><a class="primary-button download-button" href="${state.output?.url || '#'}" download="${escapeHtml(state.output?.name || 'fileforge-output')}">${icon('download', 17)} Download file</a></div><button class="again-button" type="button" id="start-again">${icon('refresh', 15)} Convert another file</button>`;
+}
+
+function errorState() {
+  return `<div class="state-card error-card"><div class="state-icon">!</div><div><strong>That one needs another look.</strong><p>${escapeHtml(state.error || 'The file could not be converted. Please try again.')}</p></div></div><button class="again-button" type="button" id="try-again">${icon('refresh', 15)} Try again</button>`;
+}
+
+function legalPage(kind) {
+  const privacy = kind === 'privacy';
+  return `<div class="site-shell legal-shell">${header()}<main class="legal-main"><a class="back-link" href="/" data-route="/">${icon('arrow', 15)} Back to FileForge</a><p class="section-kicker">${privacy ? 'Privacy' : 'Terms of use'}</p><h1>${privacy ? 'A clearer way to handle files.' : 'Simple terms for a simple tool.'}</h1><p class="legal-intro">${privacy ? 'FileForge is designed around a straightforward promise: your files stay with you.' : 'FileForge is a browser-based utility for everyday document conversion.'}</p><div class="legal-content">${privacy ? `<h2>Local-first by design</h2><p>Conversions run in your browser. FileForge does not upload your selected files to a FileForge server, create an account record, or use your documents for training.</p><h2>What your browser keeps</h2><p>Your browser temporarily reads the files you select so it can convert them. Generated downloads are created in your browser and are not stored by FileForge. Clear your browser tab or close the page to release working memory.</p><h2>Third-party libraries</h2><p>The converter uses open-source document libraries loaded with the site. They process the file data inside the current browser session.</p><h2>Questions</h2><p>If this product evolves to use server-side processing, this page will be updated before that change takes effect.</p>` : `<h2>Use the tool responsibly</h2><p>You are responsible for the files you choose and for reviewing converted outputs before sharing or relying on them.</p><h2>Conversion quality</h2><p>Different source files can produce different results. PDF table extraction works best with selectable text and clear tabular structure. FileForge does not guarantee that every conversion will preserve every visual or structural detail.</p><h2>Availability</h2><p>We aim to keep the tool useful and available, but browser capabilities, file complexity, and future changes can affect results.</p><h2>Updates</h2><p>We may refine the interface and conversion libraries over time. The current terms are always available on this page.</p>`}</div></main>${footer()}</div>`;
+}
+
+function bindShellEvents() {
+  document.querySelectorAll('[data-route]').forEach((link) => link.addEventListener('click', (event) => {
+    const target = link.getAttribute('href');
+    if (!target || target.startsWith('#')) return;
+    event.preventDefault();
+    window.history.pushState({}, '', target);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    render();
+  }));
+  const menu = document.querySelector('.mobile-menu');
+  if (menu) menu.addEventListener('click', () => {
+    const nav = document.querySelector('.desktop-nav');
+    const open = nav.classList.toggle('mobile-open');
+    menu.setAttribute('aria-expanded', String(open));
+  });
+}
+
+function bindHomeEvents() {
+  bindShellEvents();
+  document.querySelectorAll('.tool-tab').forEach((tab) => tab.addEventListener('click', () => {
+    state.activeTool = tab.dataset.tool;
+    state.files = [];
+    state.output = null;
+    state.notice = '';
+    setStatus('idle');
+    render();
+    document.querySelector('#tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+
+  const dropZone = document.querySelector('#drop-zone');
+  const input = document.querySelector('#file-input');
+  if (dropZone && input) {
+    document.querySelector('#choose-files')?.addEventListener('click', (event) => { event.stopPropagation(); input.click(); });
+    dropZone.addEventListener('click', (event) => { if (event.target.closest('button')) return; input.click(); });
+    dropZone.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+    input.addEventListener('change', (event) => acceptFiles([...event.target.files]));
+    ['dragenter', 'dragover'].forEach((eventName) => dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('dragging'); }));
+    ['dragleave', 'drop'].forEach((eventName) => dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('dragging'); }));
+    dropZone.addEventListener('drop', (event) => acceptFiles([...event.dataTransfer.files]));
+  }
+  document.querySelector('#clear-files')?.addEventListener('click', () => { state.files = []; setStatus('idle'); render(); });
+  document.querySelectorAll('.remove-file').forEach((button) => button.addEventListener('click', () => { state.files.splice(Number(button.dataset.index), 1); setStatus(state.files.length ? 'ready' : 'idle'); render(); }));
+  document.querySelectorAll('.move-file').forEach((button) => button.addEventListener('click', () => {
+    const from = Number(button.dataset.index); const to = button.dataset.direction === 'up' ? from - 1 : from + 1;
+    if (to < 0 || to >= state.files.length) return;
+    [state.files[from], state.files[to]] = [state.files[to], state.files[from]]; render();
+  }));
+  document.querySelector('#page-size')?.addEventListener('change', (event) => { state.settings.pageSize = event.target.value; });
+  document.querySelector('#orientation')?.addEventListener('change', (event) => { state.settings.orientation = event.target.value; });
+  document.querySelector('#image-fit')?.addEventListener('change', (event) => { state.settings.fit = event.target.value; });
+  document.querySelector('#convert-button')?.addEventListener('click', convert);
+  document.querySelector('#start-again')?.addEventListener('click', () => { state.files = []; state.output = null; setStatus('idle'); render(); });
+  document.querySelector('#try-again')?.addEventListener('click', () => { state.output = null; setStatus('ready'); render(); });
+}
+
+function validateFile(file) {
+  const name = file.name.toLowerCase();
+  const valid = state.activeTool === 'image' ? /\.(jpe?g)$/i.test(name) || file.type === 'image/jpeg' : state.activeTool === 'excel' ? /\.(xlsx?|csv)$/i.test(name) || /spreadsheet|excel|csv/.test(file.type) : /\.pdf$/i.test(name) || file.type === 'application/pdf';
+  if (!valid) return `“${file.name}” is not a supported ${tools[state.activeTool].label} file.`;
+  if (file.size > MAX_FILE_SIZE) return `“${file.name}” is larger than the 25 MB limit.`;
+  return '';
+}
+
+function acceptFiles(incoming) {
+  const files = state.activeTool === 'image' ? incoming : incoming.slice(0, 1);
+  const issue = files.map(validateFile).find(Boolean);
+  if (issue) { setStatus('error', issue); render(); return; }
+  if (state.activeTool === 'image' && state.files.length + files.length > MAX_IMAGE_FILES) { setStatus('error', `You can combine up to ${MAX_IMAGE_FILES} images at once.`); render(); return; }
+  state.files = state.activeTool === 'image' ? [...state.files, ...files] : files;
+  state.output = null;
+  setStatus('ready');
+  render();
+}
+
+function readDataUrl(file) {
+  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read the selected file.')); reader.readAsDataURL(file); });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error('One of the images could not be decoded.')); image.src = src; });
+}
+
+function pageFormat() {
+  return state.settings.pageSize === 'letter' ? 'letter' : state.settings.pageSize === 'legal' ? 'legal' : 'a4';
+}
+
+async function imagesToPdf() {
+  const doc = new jsPDF({ orientation: state.settings.orientation, unit: 'pt', format: pageFormat() });
+  for (let index = 0; index < state.files.length; index += 1) {
+    if (index > 0) doc.addPage(pageFormat(), state.settings.orientation);
+    const data = await readDataUrl(state.files[index]);
+    const image = await loadImage(data);
+    const pageWidth = doc.internal.pageSize.getWidth(); const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 30; const maxWidth = pageWidth - margin * 2; const maxHeight = pageHeight - margin * 2;
+    const ratio = state.settings.fit === 'cover' ? Math.max(maxWidth / image.width, maxHeight / image.height) : Math.min(maxWidth / image.width, maxHeight / image.height);
+    const width = image.width * ratio; const height = image.height * ratio;
+    const x = (pageWidth - width) / 2; const y = (pageHeight - height) / 2;
+    doc.addImage(data, 'JPEG', x, y, width, height, undefined, 'FAST');
+  }
+  return { blob: doc.output('blob'), name: 'fileforge-images.pdf', description: `${state.files.length} image${state.files.length > 1 ? 's' : ''} combined into one PDF.` };
+}
+
+async function excelToPdf() {
+  const workbook = XLSX.read(await state.files[0].arrayBuffer(), { type: 'array', cellText: true, cellDates: true });
+  const sheetName = workbook.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' }).filter((row) => row.some((cell) => String(cell).trim() !== ''));
+  if (!rows.length) throw new Error('This spreadsheet does not contain any visible rows.');
+  const doc = new jsPDF({ orientation: state.settings.orientation === 'portrait' ? 'landscape' : 'portrait', unit: 'pt', format: pageFormat() });
+  doc.setFontSize(15); doc.setTextColor('#245C4F'); doc.text(sheetName || 'Spreadsheet', 30, 34);
+  autoTable(doc, { head: [rows[0].map((cell) => String(cell))], body: rows.slice(1).map((row) => row.map((cell) => String(cell))), startY: 50, margin: { left: 30, right: 30 }, theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 5, overflow: 'linebreak' }, headStyles: { fillColor: [36, 92, 79], textColor: [255, 250, 240], fontStyle: 'bold' }, alternateRowStyles: { fillColor: [248, 245, 237] } });
+  return { blob: doc.output('blob'), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'spreadsheet'}.pdf`, description: `${rows.length} rows from “${sheetName}” formatted as a PDF.` };
+}
+
+async function pdfToExcel() {
+  const pdf = await pdfjsLib.getDocument({ data: await state.files[0].arrayBuffer() }).promise;
+  const outputRows = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const grouped = new Map();
+    content.items.forEach((item) => {
+      const x = item.transform[4]; const y = Math.round(item.transform[5] / 4) * 4;
+      if (!grouped.has(y)) grouped.set(y, []);
+      grouped.get(y).push({ x, text: item.str.trim() });
+    });
+    [...grouped.entries()].sort((a, b) => b[0] - a[0]).forEach(([, items]) => {
+      const cells = items.filter((item) => item.text).sort((a, b) => a.x - b.x).map((item) => item.text);
+      if (cells.length) outputRows.push(cells);
+    });
+    if (pageNumber < pdf.numPages) outputRows.push([]);
+  }
+  if (!outputRows.length) throw new Error('No selectable text was found. A scanned PDF may need OCR before it can be extracted.');
+  const sheet = XLSX.utils.aoa_to_sheet(outputRows);
+  sheet['!cols'] = Array.from({ length: Math.max(...outputRows.map((row) => row.length)) }, () => ({ wch: 22 }));
+  const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, sheet, 'Extracted tables');
+  const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  return { blob: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'extracted'}.xlsx`, description: `${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} extracted into an Excel workbook.` };
+}
+
+async function convert() {
+  if (!state.files.length) return;
+  setStatus('processing'); state.output = null; render();
+  try {
+    const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : await pdfToExcel();
+    result.url = URL.createObjectURL(result.blob);
+    state.output = result; setStatus('success'); render();
+  } catch (error) {
+    console.error(error); setStatus('error', error?.message || 'The conversion could not be completed.'); render();
+  }
+}
+
+window.addEventListener('popstate', render);
+render();
