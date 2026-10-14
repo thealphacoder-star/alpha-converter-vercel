@@ -1,7 +1,7 @@
 # FileForge Converter — Delivery Outcomes
 
 ## Homepage and conversion tools
-- [x] The website clearly presents JPEG/JPG to PDF, Excel to PDF, and PDF to Excel conversion tools from the homepage.
+- [x] The website clearly presents JPEG/JPG to PDF, Excel to PDF, PDF to Excel, Compress PDF, Crop PDF, Merge PDF, and PDF to JPG conversion tools from the homepage and Tools menu.
 
 ## Upload and validation
 - [x] Each tool supports drag-and-drop and file-picker uploads, shows supported-format guidance and file-size visibility, and provides validation feedback.
@@ -14,6 +14,12 @@
 
 ## PDF to Excel
 - [x] Users can upload a PDF, extract tabular content into a downloadable spreadsheet file, and receive clear processing and error states.
+
+## Additional PDF tools
+- [x] Compress PDF rebuilds PDF pages locally at a lighter image weight for easier sharing.
+- [x] Crop PDF trims a consistent 0%, 5%, or 10% edge amount from each page.
+- [x] Merge PDF accepts multiple PDFs, preserves their selected order, and combines their pages into one downloadable PDF.
+- [x] PDF to JPG exports every selected PDF page as JPG files inside one ZIP download.
 
 ## Conversion flow
 - [x] The interface consistently communicates upload, processing, success, error, retry, and download states.

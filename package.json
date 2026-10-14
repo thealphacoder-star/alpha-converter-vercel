@@ -12,6 +12,7 @@
   "dependencies": {
     "jspdf": "^3.0.2",
     "jspdf-autotable": "^5.0.2",
+    "jszip": "^3.10.1",
     "pdfjs-dist": "^5.3.93",
     "xlsx": "^0.18.5"
   },

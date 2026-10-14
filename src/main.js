@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import './styles.css';
@@ -51,6 +52,38 @@ const tools = {
     emptyText: 'or choose a PDF with selectable table text',
     button: 'Choose PDF',
     helper: 'Browser-based extraction · scanned PDFs may need OCR',
+  },
+  compress: {
+    label: 'Compress PDF', shortLabel: 'Compress', eyebrow: 'PDF optimization',
+    title: 'Make a PDF lighter without leaving your browser.',
+    description: 'Rebuild image-heavy PDFs at a smaller size for quicker sharing and storage.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB', icon: 'pdf',
+    emptyTitle: 'Drop your PDF here', emptyText: 'or choose a PDF to compress', button: 'Choose PDF',
+    helper: 'Best for image-heavy PDFs · text may be rasterized',
+  },
+  crop: {
+    label: 'Crop PDF', shortLabel: 'Crop', eyebrow: 'PDF framing',
+    title: 'Trim the edges and keep the page focused.',
+    description: 'Remove generous margins from every page and export a cleaner, tighter PDF.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB', icon: 'pdf',
+    emptyTitle: 'Drop your PDF here', emptyText: 'or choose a PDF to crop', button: 'Choose PDF',
+    helper: 'Choose a consistent trim amount for every page',
+  },
+  merge: {
+    label: 'Merge PDF', shortLabel: 'Merge', eyebrow: 'PDF assembly',
+    title: 'Bring separate PDFs together in one flow.',
+    description: 'Arrange multiple PDFs in order and combine them into one downloadable document.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB each · up to 12 files', icon: 'pdf', multiple: true,
+    emptyTitle: 'Drop your PDFs here', emptyText: 'or choose multiple PDFs to merge', button: 'Choose PDFs',
+    helper: 'Up to 12 PDFs · reorder before merging',
+  },
+  pdfjpg: {
+    label: 'PDF to JPG', shortLabel: 'PDF images', eyebrow: 'Image export',
+    title: 'Turn PDF pages into easy-to-share JPG images.',
+    description: 'Export every page as a crisp JPG bundle, ready for sharing or visual review.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB each · up to 12 files', icon: 'image', multiple: true,
+    emptyTitle: 'Drop your PDFs here', emptyText: 'or choose PDFs to export as JPGs', button: 'Choose PDFs',
+    helper: 'Every page becomes a JPG inside one ZIP download',
   },
 };
 
@@ -133,7 +166,7 @@ function header() {
         <span class="brand-name">File<span>Forge</span></span>
       </a>
       <nav class="desktop-nav" aria-label="Main navigation">
-        <a href="#tools">Tools</a>
+        <div class="nav-dropdown"><button class="nav-dropdown-trigger" type="button" aria-haspopup="true">Tools ${icon('chevron', 14)}</button><div class="nav-dropdown-panel" role="menu">${Object.entries(tools).map(([key, tool]) => `<button type="button" data-tool-link="${key}" role="menuitem"><span>${icon(tool.icon, 15)}</span>${tool.label}</button>`).join('')}</div></div>
         <a href="#workflow">How it works</a>
         <a href="#trust">Privacy first</a>
       </nav>
@@ -208,13 +241,13 @@ function footer() {
 function toolPanel() {
   const tool = tools[state.activeTool];
   const hasFiles = state.files.length > 0;
-  return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> 03</span></div>
+  return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> ${String(Object.keys(tools).length).padStart(2, '0')}</span></div>
     ${state.status === 'processing' ? processingState() : state.status === 'success' ? successState() : state.status === 'error' ? errorState() : uploadState(hasFiles, tool)}
     <div class="panel-footer"><span>${icon('shield', 15)} Files are processed locally in your browser</span><span>Max file size: 25 MB</span></div>`;
 }
 
 function uploadState(hasFiles, tool) {
-  return `<div class="upload-layout"><div class="drop-zone ${hasFiles ? 'has-files' : ''}" id="drop-zone" tabindex="0" role="button" aria-label="${tool.button}. ${tool.formats}"><input id="file-input" type="file" accept="${tool.accept}" ${state.activeTool === 'image' ? 'multiple' : ''} hidden /><div class="drop-symbol">${icon(hasFiles ? 'check' : 'upload', 26)}</div><strong>${hasFiles ? `${state.files.length} file${state.files.length > 1 ? 's' : ''} ready` : tool.emptyTitle}</strong><span>${hasFiles ? 'Add more or continue below' : tool.emptyText}</span><button class="secondary-button" type="button" id="choose-files">${icon('plus', 16)} ${tool.button}</button><small>${tool.formats}</small></div>${hasFiles ? fileQueue() : helperCard(tool)}</div>${hasFiles ? settingsCard() + actionBar() : ''}`;
+  return `<div class="upload-layout"><div class="drop-zone ${hasFiles ? 'has-files' : ''}" id="drop-zone" tabindex="0" role="button" aria-label="${tool.button}. ${tool.formats}"><input id="file-input" type="file" accept="${tool.accept}" ${tool.multiple ? 'multiple' : ''} hidden /><div class="drop-symbol">${icon(hasFiles ? 'check' : 'upload', 26)}</div><strong>${hasFiles ? `${state.files.length} file${state.files.length > 1 ? 's' : ''} ready` : tool.emptyTitle}</strong><span>${hasFiles ? 'Add more or continue below' : tool.emptyText}</span><button class="secondary-button" type="button" id="choose-files">${icon('plus', 16)} ${tool.button}</button><small>${tool.formats}</small></div>${hasFiles ? fileQueue() : helperCard(tool)}</div>${hasFiles ? settingsCard() + actionBar() : ''}`;
 }
 
 function helperCard(tool) {
@@ -222,16 +255,19 @@ function helperCard(tool) {
 }
 
 function fileQueue() {
-  return `<div class="file-queue" aria-live="polite"><div class="queue-head"><strong>Your file${state.files.length > 1 ? 's' : ''}</strong><button class="quiet-button" id="clear-files" type="button">Clear all</button></div><div class="queue-list">${state.files.map((file, index) => `<div class="file-row" data-index="${index}"><span class="file-type ${state.activeTool}">${state.activeTool === 'image' ? icon('image', 16) : state.activeTool === 'excel' ? icon('sheet', 16) : icon('pdf', 16)}</span><span class="file-name" title="${escapeHtml(file.name)}">${escapeHtml(humanFileName(file.name))}</span><span class="file-size">${formatBytes(file.size)}</span>${state.activeTool === 'image' ? `<button class="icon-button move-file" data-direction="up" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} up" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button move-file" data-direction="down" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} down" ${index === state.files.length - 1 ? 'disabled' : ''}>↓</button>` : ''}<button class="icon-button remove-file" data-index="${index}" aria-label="Remove ${escapeHtml(file.name)}">×</button></div>`).join('')}</div></div>`;
+  const reorderable = state.activeTool === 'image' || state.activeTool === 'merge' || state.activeTool === 'pdfjpg';
+  return `<div class="file-queue" aria-live="polite"><div class="queue-head"><strong>Your file${state.files.length > 1 ? 's' : ''}</strong><button class="quiet-button" id="clear-files" type="button">Clear all</button></div><div class="queue-list">${state.files.map((file, index) => `<div class="file-row" data-index="${index}"><span class="file-type ${state.activeTool}">${state.activeTool === 'image' || state.activeTool === 'pdfjpg' ? icon('image', 16) : state.activeTool === 'excel' ? icon('sheet', 16) : icon('pdf', 16)}</span><span class="file-name" title="${escapeHtml(file.name)}">${escapeHtml(humanFileName(file.name))}</span><span class="file-size">${formatBytes(file.size)}</span>${reorderable ? `<button class="icon-button move-file" data-direction="up" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} up" ${index === 0 ? 'disabled' : ''}>↑</button><button class="icon-button move-file" data-direction="down" data-index="${index}" aria-label="Move ${escapeHtml(file.name)} down" ${index === state.files.length - 1 ? 'disabled' : ''}>↓</button>` : ''}<button class="icon-button remove-file" data-index="${index}" aria-label="Remove ${escapeHtml(file.name)}">×</button></div>`).join('')}</div></div>`;
 }
 
 function settingsCard() {
   if (state.activeTool === 'pdf') return '';
+  if (['compress', 'merge', 'pdfjpg'].includes(state.activeTool)) return '';
+  if (state.activeTool === 'crop') return `<div class="settings-row"><label>Trim amount<select id="crop-inset"><option value="0">No trim</option><option value="5">5% edge trim</option><option value="10">10% edge trim</option></select></label><span class="settings-hint">The same trim is applied to every page.</span></div>`;
   return `<div class="settings-row"><label>Page size<select id="page-size"><option value="a4" ${state.settings.pageSize === 'a4' ? 'selected' : ''}>A4</option><option value="letter" ${state.settings.pageSize === 'letter' ? 'selected' : ''}>US Letter</option><option value="legal" ${state.settings.pageSize === 'legal' ? 'selected' : ''}>Legal</option></select></label><label>Orientation<select id="orientation"><option value="portrait" ${state.settings.orientation === 'portrait' ? 'selected' : ''}>Portrait</option><option value="landscape" ${state.settings.orientation === 'landscape' ? 'selected' : ''}>Landscape</option></select></label>${state.activeTool === 'image' ? `<label>Image fit<select id="image-fit"><option value="contain" ${state.settings.fit === 'contain' ? 'selected' : ''}>Fit to page</option><option value="cover" ${state.settings.fit === 'cover' ? 'selected' : ''}>Fill page</option></select></label>` : ''}</div>`;
 }
 
 function actionBar() {
-  const label = state.activeTool === 'image' ? 'Create PDF' : state.activeTool === 'excel' ? 'Convert to PDF' : 'Extract to Excel';
+  const label = state.activeTool === 'image' ? 'Create PDF' : state.activeTool === 'excel' ? 'Convert to PDF' : state.activeTool === 'pdf' ? 'Extract to Excel' : tools[state.activeTool].label;
   return `<div class="action-bar"><span>${icon('check', 16)} Ready when you are</span><button class="primary-button" id="convert-button" type="button">${label} ${icon('arrow', 17)}</button></div>`;
 }
 
@@ -271,6 +307,14 @@ function bindShellEvents() {
 
 function bindHomeEvents() {
   bindShellEvents();
+  document.querySelectorAll('[data-tool-link]').forEach((link) => link.addEventListener('click', () => {
+    state.activeTool = link.dataset.toolLink;
+    state.files = [];
+    state.output = null;
+    setStatus('idle');
+    render();
+    document.querySelector('#tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
   document.querySelectorAll('.tool-tab').forEach((tab) => tab.addEventListener('click', () => {
     state.activeTool = tab.dataset.tool;
     state.files = [];
@@ -302,6 +346,7 @@ function bindHomeEvents() {
   document.querySelector('#page-size')?.addEventListener('change', (event) => { state.settings.pageSize = event.target.value; });
   document.querySelector('#orientation')?.addEventListener('change', (event) => { state.settings.orientation = event.target.value; });
   document.querySelector('#image-fit')?.addEventListener('change', (event) => { state.settings.fit = event.target.value; });
+  document.querySelector('#crop-inset')?.addEventListener('change', (event) => { state.settings.cropInset = event.target.value; });
   document.querySelector('#convert-button')?.addEventListener('click', convert);
   document.querySelector('#start-again')?.addEventListener('click', () => { state.files = []; state.output = null; setStatus('idle'); render(); });
   document.querySelector('#try-again')?.addEventListener('click', () => { state.output = null; setStatus('ready'); render(); });
@@ -316,11 +361,12 @@ function validateFile(file) {
 }
 
 function acceptFiles(incoming) {
-  const files = state.activeTool === 'image' ? incoming : incoming.slice(0, 1);
+  const allowsMultiple = state.activeTool === 'image' || tools[state.activeTool].multiple;
+  const files = allowsMultiple ? incoming : incoming.slice(0, 1);
   const issue = files.map(validateFile).find(Boolean);
   if (issue) { setStatus('error', issue); render(); return; }
-  if (state.activeTool === 'image' && state.files.length + files.length > MAX_IMAGE_FILES) { setStatus('error', `You can combine up to ${MAX_IMAGE_FILES} images at once.`); render(); return; }
-  state.files = state.activeTool === 'image' ? [...state.files, ...files] : files;
+  if (allowsMultiple && state.files.length + files.length > MAX_IMAGE_FILES) { setStatus('error', `You can combine up to ${MAX_IMAGE_FILES} files at once.`); render(); return; }
+  state.files = allowsMultiple ? [...state.files, ...files] : files;
   state.output = null;
   setStatus('ready');
   render();
@@ -391,11 +437,66 @@ async function pdfToExcel() {
   return { blob: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'extracted'}.xlsx`, description: `${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} extracted into an Excel workbook.` };
 }
 
+async function renderPdfPages(file, scale = 1.25) {
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    pages.push({ canvas, width: viewport.width, height: viewport.height });
+  }
+  return pages;
+}
+
+function pageCanvas(page, inset = 0) {
+  if (!inset) return page.canvas;
+  const crop = document.createElement('canvas');
+  const x = Math.round(page.canvas.width * inset); const y = Math.round(page.canvas.height * inset);
+  crop.width = Math.max(1, page.canvas.width - x * 2); crop.height = Math.max(1, page.canvas.height - y * 2);
+  crop.getContext('2d').drawImage(page.canvas, x, y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+  return crop;
+}
+
+async function pdfsToPdf() {
+  const isCompress = state.activeTool === 'compress';
+  const isCrop = state.activeTool === 'crop';
+  const quality = isCompress ? 0.55 : state.activeTool === 'merge' ? 0.78 : 0.86;
+  const scale = isCompress ? 0.95 : 1.25;
+  const inset = isCrop ? Number(state.settings.cropInset || 0) / 100 : 0;
+  const pages = [];
+  for (const file of state.files) pages.push(...await renderPdfPages(file, scale));
+  if (!pages.length) throw new Error('No pages were found in the selected PDF.');
+  let doc;
+  pages.forEach((page, index) => {
+    const canvas = pageCanvas(page, inset);
+    const width = canvas.width; const height = canvas.height;
+    const orientation = width > height ? 'landscape' : 'portrait';
+    if (index === 0) doc = new jsPDF({ orientation, unit: 'pt', format: [width, height] });
+    else doc.addPage([width, height], orientation);
+    doc.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, width, height, undefined, 'FAST');
+  });
+  const name = isCompress ? 'fileforge-compressed.pdf' : isCrop ? 'fileforge-cropped.pdf' : 'fileforge-merged.pdf';
+  const description = isCompress ? `${pages.length} page${pages.length > 1 ? 's' : ''} rebuilt at a lighter image weight.` : isCrop ? `${pages.length} page${pages.length > 1 ? 's' : ''} cropped with a ${state.settings.cropInset || 0}% edge trim.` : `${pages.length} page${pages.length > 1 ? 's' : ''} combined from ${state.files.length} PDF${state.files.length > 1 ? 's' : ''}.`;
+  return { blob: doc.output('blob'), name, description };
+}
+
+async function pdfToJpg() {
+  const zip = new JSZip(); let pageCount = 0;
+  for (const file of state.files) {
+    const pages = await renderPdfPages(file, 1.5); const base = file.name.replace(/\.[^/.]+$/, '') || 'document';
+    pages.forEach((page, index) => { const data = page.canvas.toDataURL('image/jpeg', 0.9).split(',')[1]; zip.file(`${base}-${String(index + 1).padStart(2, '0')}.jpg`, data, { base64: true }); pageCount += 1; });
+  }
+  return { blob: await zip.generateAsync({ type: 'blob' }), name: 'fileforge-jpg-pages.zip', description: `${pageCount} PDF page${pageCount > 1 ? 's' : ''} exported as JPG images inside a ZIP.` };
+}
+
 async function convert() {
   if (!state.files.length) return;
   setStatus('processing'); state.output = null; render();
   try {
-    const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : await pdfToExcel();
+    const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : state.activeTool === 'pdf' ? await pdfToExcel() : state.activeTool === 'pdfjpg' ? await pdfToJpg() : await pdfsToPdf();
     result.url = URL.createObjectURL(result.blob);
     state.output = result; setStatus('success'); render();
   } catch (error) {
