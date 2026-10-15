@@ -43,3 +43,4 @@
 
 ## About page
 - [x] The footer includes an About Us button that opens a dedicated About AlphaConverter page.
+- [x] The About page includes the Alpha Converter story, mission, vision, commitment, Alpha Tech Solutions attribution, and Founder/Co-Founder details.
