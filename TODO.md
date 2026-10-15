@@ -40,3 +40,6 @@
 
 ## Legal pages
 - [x] Clear Privacy and Terms pages are available from the site footer.
+
+## About page
+- [x] The footer includes an About Us button that opens a dedicated About AlphaConverter page.
