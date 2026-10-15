@@ -85,6 +85,22 @@ const tools = {
     emptyTitle: 'Drop your PDFs here', emptyText: 'or choose PDFs to export as JPGs', button: 'Choose PDFs',
     helper: 'Every page becomes a JPG inside one ZIP download',
   },
+  protect: {
+    label: 'Protect PDF', shortLabel: 'Protect', eyebrow: 'PDF security',
+    title: 'Add a password before you share a PDF.',
+    description: 'Encrypt a PDF locally with a password so only the people you choose can open it.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB', icon: 'lock',
+    emptyTitle: 'Drop your PDF here', emptyText: 'or choose a PDF to protect', button: 'Choose PDF',
+    helper: 'Password protection is applied locally in your browser',
+  },
+  unlock: {
+    label: 'Unlock PDF', shortLabel: 'Unlock', eyebrow: 'PDF security',
+    title: 'Remove a PDF password you already know.',
+    description: 'Enter the document password to create an editable, password-free copy in your browser.',
+    accept: '.pdf,application/pdf', formats: 'PDF · up to 25 MB', icon: 'lock',
+    emptyTitle: 'Drop your protected PDF here', emptyText: 'or choose a password-protected PDF', button: 'Choose PDF',
+    helper: 'You must provide the current password to unlock the file',
+  },
   resume: {
     label: 'Resume Maker', shortLabel: 'Resume', eyebrow: 'Career toolkit',
     title: 'Build a resume that feels like you.',
@@ -99,7 +115,7 @@ const state = {
   status: 'idle',
   error: '',
   output: null,
-  settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain' },
+  settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain', cropInset: '0', password: '', confirmPassword: '' },
   resume: { template: 'classic', name: 'Alex Morgan', role: 'Product Designer', email: 'alex@example.com', phone: '+1 555 012 3456', location: 'New York, NY', summary: 'Product designer focused on clear systems, thoughtful details, and useful digital experiences.', experience: 'Senior Product Designer — Northstar Studio\n2022 — Present\nLed end-to-end product design for a growing SaaS platform.\n\nProduct Designer — Fieldwork\n2019 — 2022\nShaped customer journeys and launched a new design system.', education: 'BFA, Communication Design — School of Visual Arts\n2015 — 2019', skills: 'Product strategy, UX research, Prototyping, Design systems, Figma' },
   resumeOutput: null,
   notice: '',
@@ -286,11 +302,13 @@ function settingsCard() {
   if (state.activeTool === 'pdf') return '';
   if (['compress', 'merge', 'pdfjpg'].includes(state.activeTool)) return '';
   if (state.activeTool === 'crop') return `<div class="settings-row"><label>Trim amount<select id="crop-inset"><option value="0">No trim</option><option value="5">5% edge trim</option><option value="10">10% edge trim</option></select></label><span class="settings-hint">The same trim is applied to every page.</span></div>`;
+  if (state.activeTool === 'protect') return `<div class="settings-row security-settings"><label>Password<input id="pdf-password" type="password" autocomplete="new-password" placeholder="Create a password" value="${escapeHtml(state.settings.password)}" /></label><label>Confirm password<input id="pdf-confirm-password" type="password" autocomplete="new-password" placeholder="Repeat the password" value="${escapeHtml(state.settings.confirmPassword)}" /></label><span class="settings-hint">Use at least 8 characters. Keep a copy of the password — it cannot be recovered.</span></div>`;
+  if (state.activeTool === 'unlock') return `<div class="settings-row security-settings"><label>Current PDF password<input id="pdf-password" type="password" autocomplete="current-password" placeholder="Enter the password" value="${escapeHtml(state.settings.password)}" /></label><span class="settings-hint">The password is used only in this browser session and is never uploaded.</span></div>`;
   return `<div class="settings-row"><label>Page size<select id="page-size"><option value="a4" ${state.settings.pageSize === 'a4' ? 'selected' : ''}>A4</option><option value="letter" ${state.settings.pageSize === 'letter' ? 'selected' : ''}>US Letter</option><option value="legal" ${state.settings.pageSize === 'legal' ? 'selected' : ''}>Legal</option></select></label><label>Orientation<select id="orientation"><option value="portrait" ${state.settings.orientation === 'portrait' ? 'selected' : ''}>Portrait</option><option value="landscape" ${state.settings.orientation === 'landscape' ? 'selected' : ''}>Landscape</option></select></label>${state.activeTool === 'image' ? `<label>Image fit<select id="image-fit"><option value="contain" ${state.settings.fit === 'contain' ? 'selected' : ''}>Fit to page</option><option value="cover" ${state.settings.fit === 'cover' ? 'selected' : ''}>Fill page</option></select></label>` : ''}</div>`;
 }
 
 function actionBar() {
-  const label = state.activeTool === 'image' ? 'Create PDF' : state.activeTool === 'excel' ? 'Convert to PDF' : state.activeTool === 'pdf' ? 'Extract to Excel' : tools[state.activeTool].label;
+  const label = state.activeTool === 'image' ? 'Create PDF' : state.activeTool === 'excel' ? 'Convert to PDF' : state.activeTool === 'pdf' ? 'Extract to Excel' : state.activeTool === 'protect' ? 'Protect PDF' : state.activeTool === 'unlock' ? 'Unlock PDF' : tools[state.activeTool].label;
   return `<div class="action-bar"><span>${icon('check', 16)} Ready when you are</span><button class="primary-button" id="convert-button" type="button">${label} ${icon('arrow', 17)}</button></div>`;
 }
 
@@ -334,6 +352,8 @@ function bindHomeEvents() {
     state.activeTool = link.dataset.toolLink;
     state.files = [];
     state.output = null;
+    state.settings.password = '';
+    state.settings.confirmPassword = '';
     setStatus('idle');
     render();
     document.querySelector('#tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -352,6 +372,8 @@ function bindHomeEvents() {
     state.activeTool = tab.dataset.tool;
     state.files = [];
     state.output = null;
+    state.settings.password = '';
+    state.settings.confirmPassword = '';
     state.notice = '';
     setStatus('idle');
     render();
@@ -380,6 +402,8 @@ function bindHomeEvents() {
   document.querySelector('#orientation')?.addEventListener('change', (event) => { state.settings.orientation = event.target.value; });
   document.querySelector('#image-fit')?.addEventListener('change', (event) => { state.settings.fit = event.target.value; });
   document.querySelector('#crop-inset')?.addEventListener('change', (event) => { state.settings.cropInset = event.target.value; });
+  document.querySelector('#pdf-password')?.addEventListener('input', (event) => { state.settings.password = event.target.value; });
+  document.querySelector('#pdf-confirm-password')?.addEventListener('input', (event) => { state.settings.confirmPassword = event.target.value; });
   document.querySelector('#convert-button')?.addEventListener('click', convert);
   document.querySelector('#start-again')?.addEventListener('click', () => { state.files = []; state.output = null; setStatus('idle'); render(); });
   document.querySelector('#try-again')?.addEventListener('click', () => { state.output = null; setStatus('ready'); render(); });
@@ -481,8 +505,9 @@ async function pdfToExcel() {
   return { blob: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'extracted'}.xlsx`, description: `${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} extracted into an Excel workbook.` };
 }
 
-async function renderPdfPages(file, scale = 1.25) {
-  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+async function renderPdfPages(file, scale = 1.25, password = '') {
+  const loadingTask = pdfjsLib.getDocument({ data: await file.arrayBuffer(), password: password || undefined });
+  const pdf = await loadingTask.promise;
   const pages = [];
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
@@ -493,6 +518,38 @@ async function renderPdfPages(file, scale = 1.25) {
     pages.push({ canvas, width: viewport.width, height: viewport.height });
   }
   return pages;
+}
+
+async function pagesToPdf(pages, options = {}) {
+  let doc;
+  pages.forEach((page, index) => {
+    const width = page.canvas.width; const height = page.canvas.height;
+    const orientation = width > height ? 'landscape' : 'portrait';
+    if (index === 0) doc = new jsPDF({ orientation, unit: 'pt', format: [width, height], ...(options.encryption ? { encryption: options.encryption } : {}) });
+    else doc.addPage([width, height], orientation);
+    doc.addImage(page.canvas.toDataURL('image/jpeg', options.quality || 0.92), 'JPEG', 0, 0, width, height, undefined, 'FAST');
+  });
+  return doc;
+}
+
+async function protectPdf() {
+  const password = state.settings.password.trim();
+  const confirmPassword = state.settings.confirmPassword.trim();
+  if (password.length < 8) throw new Error('Choose a password with at least 8 characters.');
+  if (password !== confirmPassword) throw new Error('The password and confirmation do not match.');
+  const pages = await renderPdfPages(state.files[0], 1.25);
+  if (!pages.length) throw new Error('No pages were found in the selected PDF.');
+  const doc = await pagesToPdf(pages, { encryption: { userPassword: password, ownerPassword: `${password}-owner`, userPermissions: ['print', 'copy'] } });
+  return { blob: doc.output('blob'), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'document'}-protected.pdf`, description: `${pages.length} page${pages.length > 1 ? 's' : ''} encrypted with a password locally in your browser.` };
+}
+
+async function unlockPdf() {
+  const password = state.settings.password.trim();
+  if (!password) throw new Error('Enter the current PDF password to unlock this file.');
+  const pages = await renderPdfPages(state.files[0], 1.25, password);
+  if (!pages.length) throw new Error('No pages were found in the selected PDF.');
+  const doc = await pagesToPdf(pages, { quality: 0.94 });
+  return { blob: doc.output('blob'), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'document'}-unlocked.pdf`, description: `${pages.length} page${pages.length > 1 ? 's' : ''} exported as a password-free PDF.` };
 }
 
 function pageCanvas(page, inset = 0) {
@@ -514,14 +571,8 @@ async function pdfsToPdf() {
   for (const file of state.files) pages.push(...await renderPdfPages(file, scale));
   if (!pages.length) throw new Error('No pages were found in the selected PDF.');
   let doc;
-  pages.forEach((page, index) => {
-    const canvas = pageCanvas(page, inset);
-    const width = canvas.width; const height = canvas.height;
-    const orientation = width > height ? 'landscape' : 'portrait';
-    if (index === 0) doc = new jsPDF({ orientation, unit: 'pt', format: [width, height] });
-    else doc.addPage([width, height], orientation);
-    doc.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', 0, 0, width, height, undefined, 'FAST');
-  });
+  const croppedPages = pages.map((page) => ({ ...page, canvas: pageCanvas(page, inset) }));
+  doc = await pagesToPdf(croppedPages, { quality });
   const name = isCompress ? 'alphaconverter-compressed.pdf' : isCrop ? 'alphaconverter-cropped.pdf' : 'alphaconverter-merged.pdf';
   const description = isCompress ? `${pages.length} page${pages.length > 1 ? 's' : ''} rebuilt at a lighter image weight.` : isCrop ? `${pages.length} page${pages.length > 1 ? 's' : ''} cropped with a ${state.settings.cropInset || 0}% edge trim.` : `${pages.length} page${pages.length > 1 ? 's' : ''} combined from ${state.files.length} PDF${state.files.length > 1 ? 's' : ''}.`;
   return { blob: doc.output('blob'), name, description };
@@ -540,7 +591,7 @@ async function convert() {
   if (!state.files.length) return;
   setStatus('processing'); state.output = null; render();
   try {
-    const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : state.activeTool === 'pdf' ? await pdfToExcel() : state.activeTool === 'pdfjpg' ? await pdfToJpg() : await pdfsToPdf();
+    const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : state.activeTool === 'pdf' ? await pdfToExcel() : state.activeTool === 'pdfjpg' ? await pdfToJpg() : state.activeTool === 'protect' ? await protectPdf() : state.activeTool === 'unlock' ? await unlockPdf() : await pdfsToPdf();
     result.url = URL.createObjectURL(result.blob);
     state.output = result; setStatus('success'); render();
   } catch (error) {
