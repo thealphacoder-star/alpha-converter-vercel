@@ -115,8 +115,8 @@ const state = {
   status: 'idle',
   error: '',
   output: null,
-  settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain', cropInset: '0', password: '', confirmPassword: '' },
-  resume: { template: 'classic', name: 'Alex Morgan', role: 'Product Designer', email: 'alex@example.com', phone: '+1 555 012 3456', location: 'New York, NY', summary: 'Product designer focused on clear systems, thoughtful details, and useful digital experiences.', experience: 'Senior Product Designer — Northstar Studio\n2022 — Present\nLed end-to-end product design for a growing SaaS platform.\n\nProduct Designer — Fieldwork\n2019 — 2022\nShaped customer journeys and launched a new design system.', education: 'BFA, Communication Design — School of Visual Arts\n2015 — 2019', skills: 'Product strategy, UX research, Prototyping, Design systems, Figma' },
+  settings: { pageSize: 'a4', orientation: 'portrait', fit: 'contain', cropInset: '0', password: '', confirmPassword: '', enableOcr: false },
+  resume: { template: 'classic', accent: 'classic', sectionOrder: 'standard', name: 'Alex Morgan', role: 'Product Designer', email: 'alex@example.com', phone: '+1 555 012 3456', location: 'New York, NY', summary: 'Product designer focused on clear systems, thoughtful details, and useful digital experiences.', experience: 'Senior Product Designer — Northstar Studio\n2022 — Present\nLed end-to-end product design for a growing SaaS platform.\n\nProduct Designer — Fieldwork\n2019 — 2022\nShaped customer journeys and launched a new design system.', education: 'BFA, Communication Design — School of Visual Arts\n2015 — 2019', skills: 'Product strategy, UX research, Prototyping, Design systems, Figma' },
   resumeOutput: null,
   notice: '',
 };
@@ -337,13 +337,21 @@ function resumePanel() {
   const r = state.resume;
   const fields = [['name', 'Full name', 'text'], ['role', 'Target role', 'text'], ['email', 'Email', 'email'], ['phone', 'Phone', 'text'], ['location', 'Location', 'text']];
   const templates = [['classic', 'Classic', 'Structured and dependable'], ['editorial', 'Editorial', 'Warm and expressive'], ['modern', 'Modern', 'Crisp and energetic'], ['minimal', 'Minimal', 'Quiet and focused'], ['bold', 'Bold', 'Confident and distinctive']];
-  return `<div class="resume-builder"><div class="resume-form"><div class="resume-field-grid">${fields.map(([key, label, type]) => `<label>${label}<input class="resume-field" data-resume-field="${key}" type="${type}" value="${escapeHtml(r[key])}" /></label>`).join('')}</div><label class="resume-wide">Professional summary<textarea class="resume-field" data-resume-field="summary" rows="3">${escapeHtml(r.summary)}</textarea></label><label class="resume-wide">Experience<textarea class="resume-field" data-resume-field="experience" rows="6">${escapeHtml(r.experience)}</textarea></label><label class="resume-wide">Education<textarea class="resume-field" data-resume-field="education" rows="4">${escapeHtml(r.education)}</textarea></label><label class="resume-wide">Skills<textarea class="resume-field" data-resume-field="skills" rows="2">${escapeHtml(r.skills)}</textarea></label><div class="template-picker"><span class="template-label">Choose a template</span><div class="template-options" role="tablist" aria-label="Resume templates">${templates.map(([key, label, note]) => `<button type="button" class="template-choice ${r.template === key ? 'active' : ''}" data-template="${key}" role="tab" aria-selected="${r.template === key}"><span class="template-swatch ${key}"></span><strong>${label}</strong><small>${note}</small></button>`).join('')}</div></div><div class="resume-actions"><button class="primary-button" id="resume-download" type="button">${icon('download', 17)} Download resume PDF</button>${state.resumeOutput ? `<a class="resume-ready" href="${state.resumeOutput.url}" download="${state.resumeOutput.name}">${icon('check', 15)} Resume ready — download again</a>` : ''}</div></div><div class="resume-preview-wrap"><span class="preview-label">Live preview</span><div class="resume-preview resume-${r.template}" id="resume-preview">${resumePreview()}</div></div></div>`;
+  return `<div class="resume-builder"><div class="resume-form"><div class="resume-field-grid">${fields.map(([key, label, type]) => `<label>${label}<input class="resume-field" data-resume-field="${key}" type="${type}" value="${escapeHtml(r[key])}" /></label>`).join('')}</div><label class="resume-wide">Professional summary<textarea class="resume-field" data-resume-field="summary" rows="3">${escapeHtml(r.summary)}</textarea></label><label class="resume-wide">Experience<textarea class="resume-field" data-resume-field="experience" rows="6">${escapeHtml(r.experience)}</textarea></label><label class="resume-wide">Education<textarea class="resume-field" data-resume-field="education" rows="4">${escapeHtml(r.education)}</textarea></label><label class="resume-wide">Skills<textarea class="resume-field" data-resume-field="skills" rows="2">${escapeHtml(r.skills)}</textarea></label><div class="template-picker"><span class="template-label">Choose a template</span><div class="template-options" role="tablist" aria-label="Resume templates">${templates.map(([key, label, note]) => `<button type="button" class="template-choice ${r.template === key ? 'active' : ''}" data-template="${key}" role="tab" aria-selected="${r.template === key}"><span class="template-swatch ${key}"></span><strong>${label}</strong><small>${note}</small></button>`).join('')}</div></div><div class="resume-customize"><label>Accent color<select id="resume-accent"><option value="classic" ${r.accent === 'classic' ? 'selected' : ''}>Forest green</option><option value="ocean" ${r.accent === 'ocean' ? 'selected' : ''}>Ocean blue</option><option value="plum" ${r.accent === 'plum' ? 'selected' : ''}>Plum</option><option value="sunset" ${r.accent === 'sunset' ? 'selected' : ''}>Sunset</option></select></label><label>Section order<select id="resume-section-order"><option value="standard" ${r.sectionOrder === 'standard' ? 'selected' : ''}>Profile first</option><option value="experience" ${r.sectionOrder === 'experience' ? 'selected' : ''}>Experience first</option><option value="education" ${r.sectionOrder === 'education' ? 'selected' : ''}>Education first</option><option value="skills" ${r.sectionOrder === 'skills' ? 'selected' : ''}>Skills first</option></select></label></div><div class="resume-actions"><button class="primary-button" id="resume-download" type="button">${icon('download', 17)} Download resume PDF</button>${state.resumeOutput ? `<a class="resume-ready" href="${state.resumeOutput.url}" download="${state.resumeOutput.name}">${icon('check', 15)} Resume ready — download again</a>` : ''}</div></div><div class="resume-preview-wrap"><span class="preview-label">Live preview</span><div class="resume-preview resume-${r.template}" id="resume-preview">${resumePreview()}</div></div></div>`;
 }
 
 function resumePreview() {
   const r = state.resume;
   const lines = (value) => escapeHtml(value).split(/\n+/).map((line) => line.trim()).filter(Boolean).map((line) => `<div>${line}</div>`).join('');
-  return `<header><h4>${escapeHtml(r.name || 'Your Name')}</h4><p>${escapeHtml(r.role || 'Your target role')}</p><small>${escapeHtml([r.email, r.phone, r.location].filter(Boolean).join(' · '))}</small></header><section><h5>Profile</h5><p>${escapeHtml(r.summary || 'Add a short professional summary.')}</p></section><section><h5>Experience</h5><div class="resume-lines">${lines(r.experience)}</div></section><section><h5>Education</h5><div class="resume-lines">${lines(r.education)}</div></section><section><h5>Skills</h5><p>${escapeHtml(r.skills || 'Add your key skills.')}</p></section>`;
+  const sections = {
+    profile: `<section><h5>Profile</h5><p>${escapeHtml(r.summary || 'Add a short professional summary.')}</p></section>`,
+    experience: `<section><h5>Experience</h5><div class="resume-lines">${lines(r.experience)}</div></section>`,
+    education: `<section><h5>Education</h5><div class="resume-lines">${lines(r.education)}</div></section>`,
+    skills: `<section><h5>Skills</h5><p>${escapeHtml(r.skills || 'Add your key skills.')}</p></section>`,
+  };
+  const first = r.sectionOrder === 'standard' ? 'profile' : r.sectionOrder;
+  const order = [first, ...['profile', 'experience', 'education', 'skills'].filter((section) => section !== first)];
+  return `<header><h4>${escapeHtml(r.name || 'Your Name')}</h4><p>${escapeHtml(r.role || 'Your target role')}</p><small>${escapeHtml([r.email, r.phone, r.location].filter(Boolean).join(' · '))}</small></header>${order.map((section) => sections[section]).join('')}`;
 }
 
 function uploadState(hasFiles, tool) {
@@ -360,7 +368,7 @@ function fileQueue() {
 }
 
 function settingsCard() {
-  if (state.activeTool === 'pdf') return '';
+  if (state.activeTool === 'pdf') return `<div class="settings-row ocr-settings"><label class="ocr-toggle"><input id="enable-ocr" type="checkbox" ${state.settings.enableOcr ? 'checked' : ''} /><span><strong>OCR for scanned pages</strong><small>Recognize text in image-only PDFs. First use downloads the OCR engine and English language data.</small></span></label><span class="settings-hint">OCR runs in this browser. It can take longer and uses extra memory.</span></div>`;
   if (['compress', 'merge', 'pdfjpg'].includes(state.activeTool)) return '';
   if (state.activeTool === 'crop') return `<div class="settings-row"><label>Trim amount<select id="crop-inset"><option value="0">No trim</option><option value="5">5% edge trim</option><option value="10">10% edge trim</option></select></label><span class="settings-hint">The same trim is applied to every page.</span></div>`;
   if (state.activeTool === 'protect') return `<div class="settings-row security-settings"><label>Password<input id="pdf-password" type="password" autocomplete="new-password" placeholder="Create a password" value="${escapeHtml(state.settings.password)}" /></label><label>Confirm password<input id="pdf-confirm-password" type="password" autocomplete="new-password" placeholder="Repeat the password" value="${escapeHtml(state.settings.confirmPassword)}" /></label><span class="settings-hint">Use at least 8 characters. Keep a copy of the password — it cannot be recovered.</span></div>`;
@@ -447,6 +455,17 @@ function bindHomeEvents() {
     render();
   }));
   document.querySelector('#resume-download')?.addEventListener('click', downloadResume);
+  document.querySelector('#resume-accent')?.addEventListener('change', (event) => {
+    state.resume.accent = event.target.value;
+    const preview = document.querySelector('#resume-preview');
+    if (preview) preview.dataset.accent = state.resume.accent;
+  });
+  document.querySelector('#resume-section-order')?.addEventListener('change', (event) => {
+    state.resume.sectionOrder = event.target.value;
+    const preview = document.querySelector('#resume-preview');
+    if (preview) preview.innerHTML = resumePreview();
+  });
+  document.querySelector('#enable-ocr')?.addEventListener('change', (event) => { state.settings.enableOcr = event.target.checked; });
   document.querySelectorAll('.tool-tab').forEach((tab) => tab.addEventListener('click', () => {
     state.activeTool = tab.dataset.tool;
     state.files = [];
@@ -491,11 +510,19 @@ function bindHomeEvents() {
 function downloadResume() {
   const r = state.resume;
   const colors = { classic: ['#245C4F', '#F3F7EF'], editorial: ['#B7654F', '#FBF0E8'], modern: ['#234D73', '#EAF2F8'], minimal: ['#3D4843', '#F4F4F1'], bold: ['#7B4D2E', '#F6EBDD'] };
-  const [accent, tint] = colors[r.template] || colors.classic;
+  const accentChoices = { classic: ['#245C4F', '#F3F7EF'], ocean: ['#234D73', '#EAF2F8'], plum: ['#754B75', '#F4EAF5'], sunset: ['#B7654F', '#FBF0E8'] };
+  const [accent, tint] = accentChoices[r.accent] || colors[r.template] || colors.classic;
   const doc = new jsPDF({ unit: 'pt', format: 'a4' }); const margin = 42; const width = doc.internal.pageSize.getWidth(); let y = 52;
   doc.setFillColor(tint); doc.rect(0, 0, width, 128, 'F'); doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(27); doc.text(r.name || 'Your Name', margin, y); y += 25; doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text(r.role || 'Your target role', margin, y); y += 21; doc.setTextColor('#68756d'); doc.setFontSize(9); doc.text([r.email, r.phone, r.location].filter(Boolean).join('  ·  '), margin, y); y = 165;
   const section = (title, text, size = 10) => { doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(title.toUpperCase(), margin, y); y += 15; doc.setTextColor('#3b4841'); doc.setFont('helvetica', 'normal'); doc.setFontSize(size); const lines = doc.splitTextToSize(text || '', width - margin * 2); doc.text(lines, margin, y); y += lines.length * (size + 4) + 17; };
-  section('Profile', r.summary); section('Experience', r.experience); section('Education', r.education); section('Skills', r.skills);
+  const sections = {
+    profile: ['Profile', r.summary],
+    experience: ['Experience', r.experience],
+    education: ['Education', r.education],
+    skills: ['Skills', r.skills],
+  };
+  const first = r.sectionOrder === 'standard' ? 'profile' : r.sectionOrder;
+  [first, ...Object.keys(sections).filter((key) => key !== first)].forEach((key) => section(...sections[key]));
   const url = URL.createObjectURL(doc.output('blob'));
   const outputName = `${(r.name || 'resume').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-resume.pdf`;
   state.resumeOutput = { url, name: outputName };
@@ -565,27 +592,51 @@ async function excelToPdf() {
 async function pdfToExcel() {
   const pdf = await pdfjsLib.getDocument({ data: await state.files[0].arrayBuffer() }).promise;
   const outputRows = [];
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const grouped = new Map();
-    content.items.forEach((item) => {
-      const x = item.transform[4]; const y = Math.round(item.transform[5] / 4) * 4;
-      if (!grouped.has(y)) grouped.set(y, []);
-      grouped.get(y).push({ x, text: item.str.trim() });
-    });
-    [...grouped.entries()].sort((a, b) => b[0] - a[0]).forEach(([, items]) => {
-      const cells = items.filter((item) => item.text).sort((a, b) => a.x - b.x).map((item) => item.text);
-      if (cells.length) outputRows.push(cells);
-    });
-    if (pageNumber < pdf.numPages) outputRows.push([]);
+  let ocrWorker = null;
+  try {
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const grouped = new Map();
+      content.items.forEach((item) => {
+        const x = item.transform[4]; const y = Math.round(item.transform[5] / 4) * 4;
+        if (!grouped.has(y)) grouped.set(y, []);
+        grouped.get(y).push({ x, text: item.str.trim() });
+      });
+      if (![...grouped.values()].some((items) => items.some((item) => item.text)) && state.settings.enableOcr) {
+        if (!ocrWorker) {
+          const tesseractUrl = 'https://cdn.jsdelivr.net/npm/tesseract.js@6/+esm';
+          const { createWorker } = await import(/* @vite-ignore */ tesseractUrl);
+          ocrWorker = await createWorker('eng');
+        }
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const { data } = await ocrWorker.recognize(canvas);
+        for (const word of (data.words || [])) {
+          const text = word.text?.trim();
+          if (!text) continue;
+          const y = -Math.round(word.bbox.y0 / 8) * 8;
+          if (!grouped.has(y)) grouped.set(y, []);
+          grouped.get(y).push({ x: word.bbox.x0, text });
+        }
+      }
+      [...grouped.entries()].sort((a, b) => b[0] - a[0]).forEach(([, items]) => {
+        const cells = items.filter((item) => item.text).sort((a, b) => a.x - b.x).map((item) => item.text);
+        if (cells.length) outputRows.push(cells);
+      });
+      if (pageNumber < pdf.numPages) outputRows.push([]);
+    }
+  } finally {
+    if (ocrWorker) await ocrWorker.terminate();
   }
-  if (!outputRows.length) throw new Error('No selectable text was found. A scanned PDF may need OCR before it can be extracted.');
+  if (!outputRows.length) throw new Error(state.settings.enableOcr ? 'No text could be recognized. Try a clearer scan or a different PDF.' : 'No selectable text was found. Enable “OCR for scanned pages” and try again.');
   const sheet = XLSX.utils.aoa_to_sheet(outputRows);
   sheet['!cols'] = Array.from({ length: Math.max(...outputRows.map((row) => row.length)) }, () => ({ wch: 22 }));
   const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, sheet, 'Extracted tables');
   const bytes = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  return { blob: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'extracted'}.xlsx`, description: `${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} extracted into an Excel workbook.` };
+  return { blob: new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name: `${state.files[0].name.replace(/\.[^/.]+$/, '') || 'extracted'}.xlsx`, description: `${pdf.numPages} page${pdf.numPages > 1 ? 's' : ''} extracted into an Excel workbook${state.settings.enableOcr ? ' with OCR enabled for scanned pages' : ''}.` };
 }
 
 async function renderPdfPages(file, scale = 1.25, password = '') {
