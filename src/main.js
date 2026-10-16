@@ -105,7 +105,7 @@ const tools = {
     label: 'Resume Maker', shortLabel: 'Resume', eyebrow: 'Career toolkit',
     title: 'Build a resume that feels like you.',
     description: 'Fill in the essentials, choose a visual direction, and download a polished resume PDF in minutes.',
-    icon: 'file', helper: 'Five curated templates · edit, preview, download',
+    icon: 'file', helper: 'Six curated templates · edit, preview, download',
   },
 };
 
@@ -293,7 +293,7 @@ function homePage() {
             <p class="section-note">Local-first processing means your files are never sent away for conversion.</p>
           </div>
           ${historyPanel()}
-          <button class="feature-banner" type="button" data-tool-link="resume"><span class="feature-banner-icon">${icon('spark', 20)}</span><span><strong>New · Resume Maker</strong><small>Create a polished resume from five thoughtful templates.</small></span><span class="feature-banner-action">Open builder ${icon('arrow', 16)}</span></button>
+          <button class="feature-banner" type="button" data-tool-link="resume"><span class="feature-banner-icon">${icon('spark', 20)}</span><span><strong>New · Resume Maker</strong><small>Create a polished resume from six thoughtful templates.</small></span><span class="feature-banner-action">Open builder ${icon('arrow', 16)}</span></button>
           <div class="studio-card">
             <div class="tool-tabs" role="tablist" aria-label="Conversion tools">
               ${Object.entries(tools).map(([key, tool]) => `<button class="tool-tab ${state.activeTool === key ? 'active' : ''}" role="tab" aria-selected="${state.activeTool === key}" data-tool="${key}"><span class="tab-icon">${icon(tool.icon, 19)}</span><span>${tool.label}</span></button>`).join('')}
@@ -327,7 +327,7 @@ function footer() {
 function toolPanel() {
   const tool = tools[state.activeTool];
   const hasFiles = state.files.length > 0;
-  if (state.activeTool === 'resume') return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">08 <i>/</i> 08</span></div>${resumePanel()}<div class="panel-footer"><span>${icon('shield', 15)} Your resume is generated locally in your browser</span><span>Download as PDF</span></div>`;
+  if (state.activeTool === 'resume') return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> ${String(Object.keys(tools).length).padStart(2, '0')}</span></div>${resumePanel()}<div class="panel-footer"><span>${icon('shield', 15)} Your resume is generated locally in your browser</span><span>Download as PDF</span></div>`;
   return `<div class="panel-heading"><div><p class="panel-eyebrow">${tool.eyebrow}</p><h3>${tool.title}</h3><p>${tool.description}</p></div><span class="panel-counter">${String(Object.keys(tools).indexOf(state.activeTool) + 1).padStart(2, '0')} <i>/</i> ${String(Object.keys(tools).length).padStart(2, '0')}</span></div>
     ${state.status === 'processing' ? processingState() : state.status === 'success' ? successState() : state.status === 'error' ? errorState() : uploadState(hasFiles, tool)}
     <div class="panel-footer"><span>${icon('shield', 15)} Files are processed locally in your browser</span><span>Max file size: 25 MB</span></div>`;
