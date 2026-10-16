@@ -146,6 +146,54 @@ function icon(name, size = 20) {
   return `<svg ${common}>${paths[name] || paths.file}</svg>`;
 }
 
+function readLocalJson(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getConversionHistory() {
+  const history = readLocalJson('alpha-converter-history-v1', []);
+  return Array.isArray(history) ? history.filter((entry) => entry && typeof entry.id === 'string') : [];
+}
+
+function recordHistory({ toolKey, sourceNames, outputName, description }) {
+  const entries = getConversionHistory();
+  entries.unshift({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    tool: tools[toolKey]?.label || toolKey,
+    sourceNames: sourceNames.slice(0, 12).map((name) => String(name).slice(0, 180)),
+    outputName: String(outputName || '').slice(0, 180),
+    description: String(description || '').slice(0, 240),
+    createdAt: new Date().toISOString(),
+  });
+  writeLocalJson('alpha-converter-history-v1', entries.slice(0, 8));
+}
+
+function historyPanel() {
+  const entries = getConversionHistory();
+  return `<section class="history-panel" aria-labelledby="history-title">
+    <div class="history-heading"><div><p class="section-kicker">On this device</p><h3 id="history-title">Recent activity</h3><p>Only conversion details are saved here — never the contents of your files.</p></div>${entries.length ? '<button type="button" class="quiet-button history-clear" id="clear-history">Clear history</button>' : ''}</div>
+    ${entries.length ? `<ul class="history-list">${entries.map((entry) => {
+      const date = new Date(entry.createdAt);
+      const timeLabel = Number.isNaN(date.getTime()) ? 'Recent' : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      return `<li class="history-item"><span class="history-icon">${icon('file', 17)}</span><span class="history-details"><strong>${escapeHtml(entry.tool)}</strong><small>${escapeHtml((entry.sourceNames || []).join(', '))}</small></span><span class="history-time">${escapeHtml(timeLabel)}</span></li>`;
+    }).join('')}</ul>` : '<p class="history-empty">Your recent conversions will appear here after your first successful file conversion.</p>'}
+  </section>`;
+}
+
 function formatBytes(bytes) {
   if (!bytes) return '0 KB';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -167,6 +215,12 @@ function setStatus(status, error = '') {
 }
 
 function render() {
+  try {
+    const savedTheme = localStorage.getItem('alpha-converter-theme-v1');
+    document.body.dataset.theme = savedTheme === 'dark' ? 'dark' : 'light';
+  } catch {
+    document.body.dataset.theme = 'light';
+  }
   const route = window.location.pathname;
   if (route === '/privacy') {
     app.innerHTML = legalPage('privacy');
@@ -201,6 +255,7 @@ function header() {
       </nav>
       <div class="header-actions">
         <span class="secure-pill">${icon('lock', 14)} Files stay on device</span>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch theme">${icon('spark', 16)} <span>Dark mode</span></button>
         <a class="header-cta" href="#tools">Open converter ${icon('arrow', 16)}</a>
       </div>
       <button class="mobile-menu" type="button" aria-label="Open navigation" aria-expanded="false">${icon('menu', 21)}</button>
@@ -237,6 +292,7 @@ function homePage() {
             <div><p class="section-kicker">Conversion studio</p><h2 id="studio-title">Choose a format to begin.</h2></div>
             <p class="section-note">Local-first processing means your files are never sent away for conversion.</p>
           </div>
+          ${historyPanel()}
           <button class="feature-banner" type="button" data-tool-link="resume"><span class="feature-banner-icon">${icon('spark', 20)}</span><span><strong>New · Resume Maker</strong><small>Create a polished resume from five thoughtful templates.</small></span><span class="feature-banner-action">Open builder ${icon('arrow', 16)}</span></button>
           <div class="studio-card">
             <div class="tool-tabs" role="tablist" aria-label="Conversion tools">
@@ -333,7 +389,7 @@ function legalPage(kind) {
   const privacy = kind === 'privacy';
   const about = kind === 'about';
   const aboutContent = `<h2>Our Story – Alpha Converter</h2><p>Alpha Converter is a digital platform founded by <strong>Alpha Tech Solutions</strong> to make file conversion simple, convenient, and accessible for everyone. Our platform is designed to help users convert, manage, and work with digital files without unnecessary complexity.</p><p>Founded by <strong>Piyush Rastogi (Founder)</strong> and <strong>Tushar Solanki (Co-Founder)</strong>, Alpha Converter was built with a vision to simplify everyday digital tasks through smart and user-friendly technology.</p><p>From converting <strong>PDF files to JPG images</strong> to supporting other useful file-conversion tools, Alpha Converter aims to bring essential digital utilities together in one convenient platform. Whether you are a student, professional, business owner, or everyday user, our goal is to help you complete your tasks quickly and easily.</p><p>We believe technology should work for everyone. That's why we focus on a clean interface, a smooth user experience, and practical tools that make managing digital files less complicated.</p><h2>Our Mission</h2><p>To provide simple, efficient, and accessible file-conversion tools that save users time and effort.</p><h2>Our Vision</h2><p>To become a trusted all-in-one platform for PDF conversion, image conversion, and other essential digital file tools.</p><h2>Our Commitment</h2><p>We are committed to making digital file conversion more convenient through continuous innovation, useful features, and a user-friendly experience.</p><p><strong>Alpha Converter — Convert Smarter. Work Faster. Simplify Everything.</strong></p><p><strong>A platform by:</strong> Alpha Tech Solutions<br /><strong>Founder:</strong> Piyush Rastogi<br /><strong>Co-Founder:</strong> Tushar Solanki</p>`;
-  const content = about ? aboutContent : privacy ? `<h2>Local-first by design</h2><p>Conversions run in your browser. AlphaConverter does not upload your selected files to an AlphaConverter server, create an account record, or use your documents for training.</p><h2>What your browser keeps</h2><p>Your browser temporarily reads the files you select so it can convert them. Generated downloads are created in your browser and are not stored by AlphaConverter. Clear your browser tab or close the page to release working memory.</p><h2>Third-party libraries</h2><p>The converter uses open-source document libraries loaded with the site. They process the file data inside the current browser session.</p><h2>Questions</h2><p>If this product evolves to use server-side processing, this page will be updated before that change takes effect.</p>` : `<h2>Use the tool responsibly</h2><p>You are responsible for the files you choose and for reviewing converted outputs before sharing or relying on them.</p><h2>Conversion quality</h2><p>Different source files can produce different results. PDF table extraction works best with selectable text and clear tabular structure. AlphaConverter does not guarantee that every conversion will preserve every visual or structural detail.</p><h2>Availability</h2><p>We aim to keep the tool useful and available, but browser capabilities, file complexity, and future changes can affect results.</p><h2>Updates</h2><p>We may refine the interface and conversion libraries over time. The current terms are always available on this page.</p>`;
+  const content = about ? aboutContent : privacy ? `<h2>Local-first by design</h2><p>Conversions run in your browser. AlphaConverter does not upload your selected files to an AlphaConverter server, create an account record, or use your documents for training.</p><h2>Optional local preferences and history</h2><p>If browser storage is available, AlphaConverter saves your theme preference and a short list of recent conversion details (such as tool name, filenames, and time) on this device. The history does not contain file contents and can be cleared with the Clear history control. These details are not sent to AlphaConverter.</p><h2>What your browser keeps</h2><p>Your browser temporarily reads the files you select so it can convert them. Generated files are created in your browser; the recent activity list stores metadata only, not downloadable file contents. Close the page to release working memory.</p><h2>Third-party libraries</h2><p>The converter uses open-source document libraries loaded with the site. They process the file data inside the current browser session.</p><h2>Questions</h2><p>If this product evolves to use server-side processing, this page will be updated before that change takes effect.</p>` : `<h2>Use the tool responsibly</h2><p>You are responsible for the files you choose and for reviewing converted outputs before sharing or relying on them.</p><h2>Conversion quality</h2><p>Different source files can produce different results. PDF table extraction works best with selectable text and clear tabular structure. AlphaConverter does not guarantee that every conversion will preserve every visual or structural detail.</p><h2>Availability</h2><p>We aim to keep the tool useful and available, but browser capabilities, file complexity, and future changes can affect results.</p><h2>Updates</h2><p>We may refine the interface and conversion libraries over time. The current terms are always available on this page.</p>`;
   return `<div class="site-shell legal-shell">${header()}<main class="legal-main"><a class="back-link" href="/" data-route="/">${icon('arrow', 15)} Back to AlphaConverter</a><p class="section-kicker">${about ? 'About AlphaConverter' : privacy ? 'Privacy' : 'Terms of use'}</p><h1>${about ? 'Making File Conversion Simple, Fast & Easy' : privacy ? 'A clearer way to handle files.' : 'Simple terms for a simple tool.'}</h1><p class="legal-intro">${about ? 'Our Story – Alpha Converter' : privacy ? 'AlphaConverter is designed around a straightforward promise: your files stay with you.' : 'AlphaConverter is a browser-based utility for everyday document conversion.'}</p><div class="legal-content">${content}</div></main>${footer()}</div>`;
 }
 function bindShellEvents() {
@@ -345,6 +401,18 @@ function bindShellEvents() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     render();
   }));
+  const themeToggle = document.querySelector('[data-theme-toggle]');
+  if (themeToggle) {
+    const isDark = document.body.dataset.theme === 'dark';
+    themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.querySelector('span').textContent = isDark ? 'Light mode' : 'Dark mode';
+    themeToggle.addEventListener('click', () => {
+      const nextTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.body.dataset.theme = nextTheme;
+      try { localStorage.setItem('alpha-converter-theme-v1', nextTheme); } catch { /* Theme still applies for this page view. */ }
+      render();
+    });
+  }
   const menu = document.querySelector('.mobile-menu');
   if (menu) menu.addEventListener('click', () => {
     const nav = document.querySelector('.desktop-nav');
@@ -355,6 +423,10 @@ function bindShellEvents() {
 
 function bindHomeEvents() {
   bindShellEvents();
+  document.querySelector('#clear-history')?.addEventListener('click', () => {
+    try { localStorage.removeItem('alpha-converter-history-v1'); } catch { /* Keep the page usable if storage is blocked. */ }
+    render();
+  });
   document.querySelectorAll('[data-tool-link]').forEach((link) => link.addEventListener('click', () => {
     state.activeTool = link.dataset.toolLink;
     state.files = [];
@@ -424,7 +496,11 @@ function downloadResume() {
   doc.setFillColor(tint); doc.rect(0, 0, width, 128, 'F'); doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(27); doc.text(r.name || 'Your Name', margin, y); y += 25; doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text(r.role || 'Your target role', margin, y); y += 21; doc.setTextColor('#68756d'); doc.setFontSize(9); doc.text([r.email, r.phone, r.location].filter(Boolean).join('  ·  '), margin, y); y = 165;
   const section = (title, text, size = 10) => { doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(title.toUpperCase(), margin, y); y += 15; doc.setTextColor('#3b4841'); doc.setFont('helvetica', 'normal'); doc.setFontSize(size); const lines = doc.splitTextToSize(text || '', width - margin * 2); doc.text(lines, margin, y); y += lines.length * (size + 4) + 17; };
   section('Profile', r.summary); section('Experience', r.experience); section('Education', r.education); section('Skills', r.skills);
-  const url = URL.createObjectURL(doc.output('blob')); state.resumeOutput = { url, name: `${(r.name || 'resume').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-resume.pdf` }; render();
+  const url = URL.createObjectURL(doc.output('blob'));
+  const outputName = `${(r.name || 'resume').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-resume.pdf`;
+  state.resumeOutput = { url, name: outputName };
+  recordHistory({ toolKey: 'resume', sourceNames: ['Resume Maker'], outputName, description: 'Resume PDF generated in this browser.' });
+  render();
 }
 
 function validateFile(file) {
@@ -600,6 +676,12 @@ async function convert() {
   try {
     const result = state.activeTool === 'image' ? await imagesToPdf() : state.activeTool === 'excel' ? await excelToPdf() : state.activeTool === 'pdf' ? await pdfToExcel() : state.activeTool === 'pdfjpg' ? await pdfToJpg() : state.activeTool === 'protect' ? await protectPdf() : state.activeTool === 'unlock' ? await unlockPdf() : await pdfsToPdf();
     result.url = URL.createObjectURL(result.blob);
+    recordHistory({
+      toolKey: state.activeTool,
+      sourceNames: state.files.map((file) => file.name),
+      outputName: result.name,
+      description: result.description,
+    });
     state.output = result; setStatus('success'); render();
   } catch (error) {
     console.error(error); setStatus('error', error?.message || 'The conversion could not be completed.'); render();
