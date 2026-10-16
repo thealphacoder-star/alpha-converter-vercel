@@ -36,7 +36,9 @@
 - [x] Users can switch between light and dark themes; the preference is saved locally when browser storage is available.
 - [x] The homepage displays up to eight recent conversion records using metadata only (tool, filenames, output name, and time); users can clear the list.
 - [x] Privacy copy explains local theme preferences and metadata-only history storage.
-- [ ] Add and validate OCR for scanned PDFs using a maintained OCR engine; keep recognition local where practical and disclose any extra download/performance cost.
+- [x] PDF to Excel offers opt-in OCR for image-only pages using Tesseract.js loaded on demand; document pages are rendered and recognized in-browser, with OCR worker cleanup after use. OCR language data and engine assets are fetched from a CDN on first use.
+- [x] Resume Maker supports accent-color selection and configurable section order in both live preview and exported PDF.
+- [ ] Run production build and browser smoke tests across all existing conversion tools; verify OCR against real scanned PDFs and supported browsers.
 
 ## Privacy and cleanup messaging
 - [x] The website communicates privacy-focused handling, retention/deletion expectations, and automatic cleanup of uploaded and generated files.
