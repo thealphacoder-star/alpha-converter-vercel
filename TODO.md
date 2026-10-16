@@ -38,6 +38,7 @@
 - [x] Privacy copy explains local theme preferences and metadata-only history storage.
 - [x] PDF to Excel offers opt-in OCR for image-only pages using Tesseract.js loaded on demand; document pages are rendered and recognized in-browser, with OCR worker cleanup after use. OCR language data and engine assets are fetched from a CDN on first use.
 - [x] Resume Maker supports accent-color selection and configurable section order in both live preview and exported PDF.
+- [x] Resume Maker includes a sixth Technical template and paginates long resume content across PDF pages.
 - [ ] Run production build and browser smoke tests across all existing conversion tools; verify OCR against real scanned PDFs and supported browsers. No browser/build test has yet been run in this editing session.
 
 ## Privacy and cleanup messaging
