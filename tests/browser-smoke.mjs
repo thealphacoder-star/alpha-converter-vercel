@@ -55,8 +55,8 @@ async function downloadCurrent() {
 try {
   await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 45000 });
   assert.match(await page.title(), /AlphaConverter/i);
-  assert.equal(await page.locator('.tool-tab').count(), 9, 'Expected all nine tools to be visible');
-  for (const label of ['JPG to PDF', 'Excel to PDF', 'PDF to Excel', 'Compress PDF', 'Crop PDF', 'Merge PDF', 'PDF to JPG', 'Protect PDF', 'Unlock PDF']) {
+  assert.equal(await page.locator('.tool-tab').count(), 10, 'Expected all ten tools, including Resume Maker, to be visible');
+  for (const label of ['JPG to PDF', 'Excel to PDF', 'PDF to Excel', 'Compress PDF', 'Crop PDF', 'Merge PDF', 'PDF to JPG', 'Protect PDF', 'Unlock PDF', 'Resume Maker']) {
     assert.ok(await page.getByRole('tab', { name: new RegExp(label, 'i') }).count(), `Missing tool tab: ${label}`);
   }
 
