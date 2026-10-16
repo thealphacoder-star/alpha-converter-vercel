@@ -37,7 +37,13 @@ async function upload(files) {
 }
 async function convertAndAssert() {
   await page.locator('#convert-button').click();
-  await page.locator('.success-card').waitFor({ timeout: 60000 });
+  try {
+    await page.locator('.success-card').waitFor({ timeout: 60000 });
+  } catch (error) {
+    const failure = await page.locator('.error-card').allInnerTexts().catch(() => []);
+    const processing = await page.locator('#processing-state').allInnerTexts().catch(() => []);
+    throw new Error(`Conversion failed for tool "${await page.locator('#tool-panel').getAttribute('data-tool') || 'unknown'}". Error cards: ${failure.join(' | ') || '(none)'}. Processing state: ${processing.join(' | ') || '(none)'}. Original wait error: ${error.message}`);
+  }
   assert.match(await page.locator('.success-card').innerText(), /Your file is ready/i);
 }
 async function downloadCurrent() {
