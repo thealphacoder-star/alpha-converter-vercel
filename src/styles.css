@@ -167,3 +167,22 @@ body[data-theme="dark"] .theme-toggle:hover { background: #263e36; }
   .history-time { max-width: 88px; white-space: normal; text-align: right; }
   .history-item { gap: 8px; }
 }
+
+
+/* Follow-up release: Resume Maker controls and optional in-browser OCR. */
+.resume-customize { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.resume-customize label, .ocr-settings > label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.resume-customize select { width: 100%; min-height: 40px; border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; color: var(--ink); background: #fffdf8; }
+.resume-preview[data-accent="ocean"] { --resume-accent: #234d73; }
+.resume-preview[data-accent="plum"] { --resume-accent: #754b75; }
+.resume-preview[data-accent="sunset"] { --resume-accent: #b7654f; }
+.resume-preview[data-accent] header h4, .resume-preview[data-accent] section h5 { color: var(--resume-accent, var(--green)); }
+.ocr-settings { align-items: center; }
+.ocr-toggle { display: flex !important; align-items: flex-start; gap: 10px !important; color: var(--ink) !important; cursor: pointer; }
+.ocr-toggle input { width: 16px; height: 16px; margin-top: 3px; accent-color: var(--green); flex: 0 0 auto; }
+.ocr-toggle span { display: grid; gap: 3px; }
+.ocr-toggle strong { font-size: 12px; color: var(--deep); }
+.ocr-toggle small { max-width: 420px; font-size: 11px; line-height: 1.5; color: var(--muted); font-weight: 400; }
+body[data-theme="dark"] .resume-customize select { background: #1d2825; border-color: #34433d; color: #e3ece7; }
+body[data-theme="dark"] .ocr-toggle strong { color: #eef5f0; }
+@media (max-width: 650px) { .resume-customize { grid-template-columns: 1fr; } }
