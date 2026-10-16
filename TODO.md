@@ -27,7 +27,7 @@
 
 ## Resume Maker
 - [x] The front page highlights Resume Maker and provides a dedicated builder with editable profile, summary, experience, education, and skills fields.
-- [x] Resume Maker provides five selectable templates — Classic, Editorial, Modern, Minimal, and Bold — with live preview updates and a browser-generated PDF download.
+- [x] Resume Maker provides six selectable templates — Classic, Editorial, Modern, Minimal, Bold, and Technical — with live preview updates and a browser-generated PDF download.
 
 ## Conversion flow
 - [x] The interface consistently communicates upload, processing, success, error, retry, and download states.
