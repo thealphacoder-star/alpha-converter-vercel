@@ -32,6 +32,12 @@
 ## Conversion flow
 - [x] The interface consistently communicates upload, processing, success, error, retry, and download states.
 
+## Personalization and recent activity
+- [x] Users can switch between light and dark themes; the preference is saved locally when browser storage is available.
+- [x] The homepage displays up to eight recent conversion records using metadata only (tool, filenames, output name, and time); users can clear the list.
+- [x] Privacy copy explains local theme preferences and metadata-only history storage.
+- [ ] Add and validate OCR for scanned PDFs using a maintained OCR engine; keep recognition local where practical and disclose any extra download/performance cost.
+
 ## Privacy and cleanup messaging
 - [x] The website communicates privacy-focused handling, retention/deletion expectations, and automatic cleanup of uploaded and generated files.
 
