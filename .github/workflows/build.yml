@@ -1,4 +1,4 @@
-name: Build and smoke check
+name: Build and browser smoke checks
 
 on:
   push:
@@ -11,8 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-and-browser-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -30,3 +31,25 @@ jobs:
         run: pnpm build
       - name: Smoke-check production entrypoint
         run: test -s dist/index.html && test -n "$(find dist/assets -maxdepth 1 -type f -print -quit)" && grep -q '/assets/' dist/index.html
+      - name: Install isolated Playwright runner
+        run: npm install --prefix /tmp/alpha-browser-test --no-save --no-package-lock playwright@1.55.0
+      - name: Install Chromium
+        run: /tmp/alpha-browser-test/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          pnpm preview --host 127.0.0.1 --port 4173 > /tmp/alpha-preview.log 2>&1 &
+          echo $! > /tmp/alpha-preview.pid
+          for i in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/alpha-preview.log
+          exit 1
+      - name: Run real-browser smoke tests
+        env:
+          PLAYWRIGHT_MODULE: /tmp/alpha-browser-test/node_modules/playwright/index.mjs
+          ALPHA_BASE_URL: http://127.0.0.1:4173
+        run: node tests/browser-smoke.mjs
+      - name: Print preview logs on failure
+        if: failure()
+        run: cat /tmp/alpha-preview.log || true
