@@ -336,7 +336,7 @@ function toolPanel() {
 function resumePanel() {
   const r = state.resume;
   const fields = [['name', 'Full name', 'text'], ['role', 'Target role', 'text'], ['email', 'Email', 'email'], ['phone', 'Phone', 'text'], ['location', 'Location', 'text']];
-  const templates = [['classic', 'Classic', 'Structured and dependable'], ['editorial', 'Editorial', 'Warm and expressive'], ['modern', 'Modern', 'Crisp and energetic'], ['minimal', 'Minimal', 'Quiet and focused'], ['bold', 'Bold', 'Confident and distinctive']];
+  const templates = [['classic', 'Classic', 'Structured and dependable'], ['editorial', 'Editorial', 'Warm and expressive'], ['modern', 'Modern', 'Crisp and energetic'], ['minimal', 'Minimal', 'Quiet and focused'], ['bold', 'Bold', 'Confident and distinctive'], ['technical', 'Technical', 'Clear and data-focused']];
   return `<div class="resume-builder"><div class="resume-form"><div class="resume-field-grid">${fields.map(([key, label, type]) => `<label>${label}<input class="resume-field" data-resume-field="${key}" type="${type}" value="${escapeHtml(r[key])}" /></label>`).join('')}</div><label class="resume-wide">Professional summary<textarea class="resume-field" data-resume-field="summary" rows="3">${escapeHtml(r.summary)}</textarea></label><label class="resume-wide">Experience<textarea class="resume-field" data-resume-field="experience" rows="6">${escapeHtml(r.experience)}</textarea></label><label class="resume-wide">Education<textarea class="resume-field" data-resume-field="education" rows="4">${escapeHtml(r.education)}</textarea></label><label class="resume-wide">Skills<textarea class="resume-field" data-resume-field="skills" rows="2">${escapeHtml(r.skills)}</textarea></label><div class="template-picker"><span class="template-label">Choose a template</span><div class="template-options" role="tablist" aria-label="Resume templates">${templates.map(([key, label, note]) => `<button type="button" class="template-choice ${r.template === key ? 'active' : ''}" data-template="${key}" role="tab" aria-selected="${r.template === key}"><span class="template-swatch ${key}"></span><strong>${label}</strong><small>${note}</small></button>`).join('')}</div></div><div class="resume-customize"><label>Accent color<select id="resume-accent"><option value="classic" ${r.accent === 'classic' ? 'selected' : ''}>Forest green</option><option value="ocean" ${r.accent === 'ocean' ? 'selected' : ''}>Ocean blue</option><option value="plum" ${r.accent === 'plum' ? 'selected' : ''}>Plum</option><option value="sunset" ${r.accent === 'sunset' ? 'selected' : ''}>Sunset</option></select></label><label>Section order<select id="resume-section-order"><option value="standard" ${r.sectionOrder === 'standard' ? 'selected' : ''}>Profile first</option><option value="experience" ${r.sectionOrder === 'experience' ? 'selected' : ''}>Experience first</option><option value="education" ${r.sectionOrder === 'education' ? 'selected' : ''}>Education first</option><option value="skills" ${r.sectionOrder === 'skills' ? 'selected' : ''}>Skills first</option></select></label></div><div class="resume-actions"><button class="primary-button" id="resume-download" type="button">${icon('download', 17)} Download resume PDF</button>${state.resumeOutput ? `<a class="resume-ready" href="${state.resumeOutput.url}" download="${state.resumeOutput.name}">${icon('check', 15)} Resume ready — download again</a>` : ''}</div></div><div class="resume-preview-wrap"><span class="preview-label">Live preview</span><div class="resume-preview resume-${r.template}" id="resume-preview" data-accent="${r.accent || 'classic'}">${resumePreview()}</div></div></div>`;
 }
 
@@ -509,12 +509,57 @@ function bindHomeEvents() {
 
 function downloadResume() {
   const r = state.resume;
-  const colors = { classic: ['#245C4F', '#F3F7EF'], editorial: ['#B7654F', '#FBF0E8'], modern: ['#234D73', '#EAF2F8'], minimal: ['#3D4843', '#F4F4F1'], bold: ['#7B4D2E', '#F6EBDD'] };
+  const colors = {
+    classic: ['#245C4F', '#F3F7EF'],
+    editorial: ['#B7654F', '#FBF0E8'],
+    modern: ['#234D73', '#EAF2F8'],
+    minimal: ['#3D4843', '#F4F4F1'],
+    bold: ['#7B4D2E', '#F6EBDD'],
+    technical: ['#365A70', '#EAF1F5'],
+  };
   const accentChoices = { classic: ['#245C4F', '#F3F7EF'], ocean: ['#234D73', '#EAF2F8'], plum: ['#754B75', '#F4EAF5'], sunset: ['#B7654F', '#FBF0E8'] };
   const [accent, tint] = accentChoices[r.accent] || colors[r.template] || colors.classic;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' }); const margin = 42; const width = doc.internal.pageSize.getWidth(); let y = 52;
-  doc.setFillColor(tint); doc.rect(0, 0, width, 128, 'F'); doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(27); doc.text(r.name || 'Your Name', margin, y); y += 25; doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text(r.role || 'Your target role', margin, y); y += 21; doc.setTextColor('#68756d'); doc.setFontSize(9); doc.text([r.email, r.phone, r.location].filter(Boolean).join('  ·  '), margin, y); y = 165;
-  const section = (title, text, size = 10) => { doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(title.toUpperCase(), margin, y); y += 15; doc.setTextColor('#3b4841'); doc.setFont('helvetica', 'normal'); doc.setFontSize(size); const lines = doc.splitTextToSize(text || '', width - margin * 2); doc.text(lines, margin, y); y += lines.length * (size + 4) + 17; };
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const margin = 42;
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const bottom = height - 44;
+  let y = 52;
+  doc.setFillColor(tint); doc.rect(0, 0, width, 128, 'F');
+  doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(27);
+  const nameLines = doc.splitTextToSize(r.name || 'Your Name', width - margin * 2);
+  doc.text(nameLines, margin, y); y += nameLines.length * 30;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(12);
+  const roleLines = doc.splitTextToSize(r.role || 'Your target role', width - margin * 2);
+  doc.text(roleLines, margin, y); y += roleLines.length * 15 + 5;
+  doc.setTextColor('#68756d'); doc.setFontSize(9);
+  const contact = [r.email, r.phone, r.location].filter(Boolean).join('  ·  ');
+  const contactLines = doc.splitTextToSize(contact, width - margin * 2);
+  doc.text(contactLines, margin, y);
+  y = Math.max(165, y + contactLines.length * 11 + 20);
+  const newPage = () => { doc.addPage(); y = 52; };
+  const section = (title, text) => {
+    const lines = doc.splitTextToSize(String(text || '').trim() || '—', width - margin * 2);
+    const lineHeight = 14;
+    let offset = 0;
+    let headingPending = true;
+    while (offset < lines.length || headingPending) {
+      if (y > bottom - 32) newPage();
+      doc.setTextColor(accent); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text(title.toUpperCase(), margin, y); y += 15;
+      headingPending = false;
+      doc.setTextColor('#3b4841'); doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+      const availableLines = Math.max(1, Math.floor((bottom - y) / lineHeight));
+      const chunk = lines.slice(offset, offset + availableLines);
+      if (chunk.length) {
+        doc.text(chunk, margin, y);
+        y += chunk.length * lineHeight;
+        offset += chunk.length;
+      }
+      if (offset < lines.length) newPage();
+    }
+    y += 14;
+  };
   const sections = {
     profile: ['Profile', r.summary],
     experience: ['Experience', r.experience],
