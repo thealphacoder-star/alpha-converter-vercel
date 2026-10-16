@@ -66,7 +66,7 @@ try {
   assert.equal(await page.locator('body').getAttribute('data-theme'), 'light', 'Light theme toggle should restore the theme');
 
   for (const [route, heading] of [['/privacy', /clearer way to handle files/i], ['/terms', /simple terms/i], ['/about', /making file conversion simple/i]]) {
-    await page.locator(`[data-route="${route}"]`).click();
+    await page.locator('.footer-links').locator(`a[href="${route}"]`).click();
     await page.getByRole('heading', { level: 1, name: heading }).waitFor();
     await page.getByRole('link', { name: /back to alphaconverter/i }).click();
     await page.locator('#tool-panel').waitFor();
